@@ -128,6 +128,15 @@ A default config will be created at `$PWD/config.toml` if no config is found.
 
 ## Usage
 
+All API calls will return a `success` boolean.
+If it is `false`, it will also add `error` (message) and `errorCode` (constant from `common/errors.go`).
+
+All API calls (excluding `/connect` endpoint) requires authentication with a `token` query parameter, or set as a `Authorization` header in the format of: `Bearer $TOKEN`.
+
+Having an invalid or missing token will result in the `INVALID_AUTHORIZATION` error code.
+
+Most errors starting with `ERROR_` are downstream errors, usually from Redis. Check if your Redis connection is valid!
+
 ### Client authentication
 
 #### Claims
@@ -168,6 +177,18 @@ POST /claim?user=1&session=a&expiration=1588473164&id=a1b2c3
 Authorization: Bearer abcxyz
 ```
 
+##### Errors
+
+Creating a claim has the follow possible errors:
+
+- `USER_ID_REQUIRED`: If the `user` parameter is not set
+- `INVALID_EXPIRATION`: If the expiration is invalid (not parsable as integer)
+- `NEGATIVE_EXPIRATION`: If the expiration is negative
+- `INVALID_DURATION`: If the duration is invalid (not parsable as integer)
+- `NEGATIVE_DURATION`: If the duration is negative
+- `ERROR_CHECKING_CLAIM`: If an error occurred during checking if a claim exist (Redis error)
+- `CLAIM_ID_ALREADY_USED`: If the claim ID is set and is already used
+
 #### JWT
 
 To authenticate a client, you can also create a JWT token and deliver it to the client before connecting. To enable this, set the `jwt_secret` to with your JWT secret (HMAC signature secret)
@@ -188,6 +209,17 @@ Connect using a WebSocket to `ws://worker/connect` with the one of the following
 - `jwt`: JWT created previously
 
 You can load-balance a cluster of workers, as long as the load-balancer supports WebSockets.
+
+#### Errors
+
+The following errors can happen during connection:
+
+- `ERROR_GETTING_CLAIM`: If an error occurred during fetching the claim (Redis error)
+- `MISSING_CLAIM`: If the claim ID doesn't exists. This can also happen if the claim has expired
+- `INVALID_EXPIRATION`: If the claim has an invalid expiration (shouldn't happen unless Redis error)
+- `EXPIRED_CLAIM`: If the claim has expired, but Redis hasn't expired the claim on it's own
+- `INVALID_JWT`: If the JWT is malformed (bad JSON/JWT format) or is not signed with proper key
+- `MISSING_AUTHENTICATION`: If no authentication is provided (no claim/JWT)
 
 ### Sending message
 
@@ -223,6 +255,18 @@ Authorization: Bearer abcxyz
 <Cretezy> Hey!
 ```
 
+#### Errors
+
+The following errors can happen during sending a message:
+
+- `INVALID_AUTHORIZATION`: Invalid authentication (token). See errors section under usage
+- `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
+- `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
+- `MISSING_CONNECTION_OR_USER`: If `id` or `user` is not provided
+- `INVALID_MESSAGE_TYPE`: If the `type` is invalid
+- `ERROR_READING_MESSAGE`: If an error occurred during reading the request body
+- `ERROR_MARSHALLING_MESSAGE`: If an error occurred during preparing to send the message to the workers (shouldn't happen)
+
 ### Disconnecting
 
 You can disconnect a client by user (and optionally session) ID.
@@ -246,6 +290,17 @@ Disconnect a user (`1`) with a session (`a`):
 ```text
 POST /send?token=abcxyz&user=1&session=a
 ```
+
+#### Errors
+
+The following errors can happen during disconnection:
+
+- `INVALID_AUTHORIZATION`: Invalid authentication (token). See errors section under usage
+- `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
+- `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
+- `MISSING_CONNECTION_OR_USER`: If `id` or `user` is not provided
+- `ERROR_GETTING_CLAIM`: If an error occurred during fetching the claim(s) (Redis error)
+- `ERROR_MARSHALLING_MESSAGE`: If an error occurred during preparing to send the message to the workers (shouldn't happen)
 
 ### Info
 
@@ -280,6 +335,16 @@ Get info for a user (`1`) with a session (`a`):
 ```text
 GET /info?token=abcxyz&user=1&session=a
 ```
+
+#### Errors
+
+The following errors can happen during getting info:
+
+- `INVALID_AUTHORIZATION`: Invalid authentication (token). See errors section under usage
+- `ERROR_GETTING_CLAIM`: If an error occurred during fetching the claim(s) (Redis error)
+- `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
+- `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
+- `MISSING_CONNECTION_OR_USER`: If `id` or `user` is not provided
 
 ## Internals
 
