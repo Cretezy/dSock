@@ -1,0 +1,18 @@
+syntax = "proto3";
+option go_package = "github.com/Cretezy/dSock/common/protos";
+
+message Message {
+    enum MessageType {
+        DISCONNECT = 0;
+        // Must match RFC 6455, section 11.8
+        TEXT = 1;
+        BINARY = 2;
+    }
+
+    MessageType type = 1;
+    bytes body = 2;
+
+    string connection = 3;
+    string user = 4;
+    string session = 5;
+}

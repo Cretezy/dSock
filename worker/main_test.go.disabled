@@ -1,0 +1,67 @@
+package sock_test
+
+import (
+	"github.com/gorilla/websocket"
+	"net/http"
+	"testing"
+	"time"
+)
+
+func TestConnecting(t *testing.T) {
+	quit := make(chan struct{}, 1)
+	go func() {
+		sock.Start(sock.SockOptions{
+			RedisOptions: &redis.Options{
+				Addr:     "localhost:6379",
+				Password: "",
+				DB:       1,
+			},
+			Address:     ":6242",
+			QuitChannel: quit,
+		})
+	}()
+
+	defer func() {
+		quit <- struct{}{}
+	}()
+
+	<-time.NewTimer(time.Second).C
+
+	conn, _, err := websocket.DefaultDialer.Dial("ws://localhost:6242/connect", nil)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	err = conn.WriteJSON(map[string]interface{}{
+		"userId": "test-user-id",
+	})
+
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	resp, err := http.Get("http://localhost:6242/send?userId=test-user-id&message=test&type=text")
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	messageType, data, err := conn.ReadMessage()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	if messageType != websocket.TextMessage {
+		t.Error("Message type does not match. Got:", messageType)
+		return
+	}
+
+	if string(data) != "test" {
+		t.Error("Message does not match. Got:", string(data))
+		return
+	}
+}
