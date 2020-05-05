@@ -249,7 +249,7 @@ POST /send?token=abcxyz&user=1&session=a
 
 ### Info
 
-You can access info about connections and claims using the `POST /info` API endpoint. The following query params are supported:
+You can access info about connections and claims using the `GET /info` API endpoint. The following query params are supported:
 
 - Targeting (one is required):
   - `user` (string): The user ID to target
@@ -278,7 +278,7 @@ The returned object contains:
 Get info for a user (`1`) with a session (`a`):
 
 ```text
-POST /info?token=abcxyz&user=1&session=a
+GET /info?token=abcxyz&user=1&session=a
 ```
 
 ## Internals
