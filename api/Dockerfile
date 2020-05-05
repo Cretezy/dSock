@@ -6,7 +6,7 @@ RUN go get github.com/codegangsta/gin
 WORKDIR /app
 
 ADD go.mod go.sum ./
-RUN go get ./...
+RUN go mod download
 
 ADD common ./common
 ADD api ./api

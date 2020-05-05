@@ -106,10 +106,11 @@ func createClaimHandler(c *gin.Context) {
 		"user":       user,
 		"expiration": expirationTime.Format(time.RFC3339),
 	}
+
 	if session != "" {
 		claim["session"] = session
-
 	}
+
 	claimKey := "claim:" + id
 	redisClient.HSet(claimKey, claim)
 	redisClient.ExpireAt(claimKey, expirationTime)
@@ -123,9 +124,18 @@ func createClaimHandler(c *gin.Context) {
 		redisClient.SAdd(userSessionKey, id, 0)
 	}
 
-	c.AbortWithStatusJSON(200, map[string]interface{}{
-		"success":    true,
+	claimResponse := gin.H{
 		"id":         id,
 		"expiration": expirationTime.Unix(),
+		"user":       user,
+	}
+
+	if session != "" {
+		claimResponse["session"] = session
+	}
+
+	c.AbortWithStatusJSON(200, map[string]interface{}{
+		"success": true,
+		"claim":   claimResponse,
 	})
 }

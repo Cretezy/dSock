@@ -157,8 +157,11 @@ You can create them by accessing the API as `POST /claim` with the following que
 
 The returned body will contain the following keys:
 
-- `id`: The claim ID
-- `expiration`: The expiration in seconds from epoch
+- `claim`: The claim data
+    - `id`: The claim ID
+    - `expiration`: The expiration in seconds from epoch
+    - `user`: The user for the claim
+    - `session` (if session is provided): The user session for the claim
 
 A claim is single-use, so once a client connects, it will instantly expire.
 
@@ -410,6 +413,14 @@ Once changes are done to the definitions, run the `scripts/build-protos` file to
 ### Docker
 
 You can build the Docker images using `scripts/build-docker`. This will create the `dsock-worker` and `dsock-api` images.
+
+### Tests
+
+dSock has multiple types of tests to ensure stability and maximum coverage.
+
+#### End-to-end (E2E)
+
+You can run the E2E tests by running `scripts/run-e2e`. The E2E tests are located inside the `e2e` directory. 
 
 ### Contributing
 

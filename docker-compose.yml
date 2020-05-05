@@ -11,6 +11,8 @@ services:
       - /app/api/build/
     ports:
       - 3000:80
+    depends_on:
+      - redis
   worker:
     build:
       dockerfile: worker/Dockerfile
@@ -21,6 +23,8 @@ services:
       - /app/worker/build/
     ports:
       - 3001:80
+    depends_on:
+      - redis
   redis:
     image: redis:alpine
     ports:

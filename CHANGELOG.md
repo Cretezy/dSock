@@ -1,3 +1,31 @@
+## Unreleased
+
+- **Breaking**
+  - Changed response format for creating claims
+    - All claim data is inside the `claim` key, and more data is present
+      Example:
+      ```json5
+      // Before
+      {
+        "success": true,
+        "id": "XXX",
+        "expiration": 1588473164
+      }
+      
+      // After
+      {
+        "success": true,
+        "claim": {
+          "id": "XXX",
+          "expiration": 1588473164,
+          "user": "a",
+          "session": "b"
+        }
+      }
+      ```
+
+- Added tests (E2E)
+
 ## v0.1.2 - 2020-05-06
 
 - Improved code documentation, refactored to make it cleaner
