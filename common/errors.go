@@ -24,6 +24,7 @@ var (
 	ErrorInvalidJwt            = "INVALID_JWT"
 
 	ErrorClaimIdAlreadyUsed = "CLAIM_ID_ALREADY_USED"
+	ErrorCheckingClaim      = "ERROR_CHECKING_CLAIM"
 	ErrorGettingClaim       = "ERROR_GETTING_CLAIM"
 	ErrorMissingClaim       = "MISSING_CLAIM"
 	ErrorExpiredClaim       = "EXPIRED_CLAIM"

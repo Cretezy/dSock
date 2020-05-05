@@ -59,8 +59,9 @@ func createClaimHandler(c *gin.Context) {
 
 		if duration < 1 {
 			c.AbortWithStatusJSON(400, map[string]interface{}{
-				"success": false,
-				"error":   "Can not use 0 or negative duration",
+				"success":   false,
+				"error":     "Can not use 0 or negative duration",
+				"errorCode": common.ErrorNegativeDuration,
 			})
 			return
 		}
@@ -81,7 +82,7 @@ func createClaimHandler(c *gin.Context) {
 			c.AbortWithStatusJSON(500, map[string]interface{}{
 				"success":   false,
 				"error":     "Error checking if claim already exists",
-				"errorCode": common.ErrorNegativeDuration,
+				"errorCode": common.ErrorCheckingClaim,
 			})
 			return
 		}
