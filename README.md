@@ -30,6 +30,10 @@ Disconnect clients from an external event (logout) from a session ID or for all 
 
 ## Uses
 
+The main use case for dSock is having stateful WebSocket connections act as a stateless API.
+
+This enables you to not worry about your connection handling and simply send messages to all (or some) of a user's clients as any other HTTP API.
+
 **Chat service**
 
 Clients connect to dSock, and your back-end can broadcast messages to a specific user's clients
