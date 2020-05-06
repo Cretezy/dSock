@@ -47,43 +47,22 @@ func infoHandler(c *gin.Context) {
 	user := c.Query("user")
 	session := c.Query("session")
 
-	var claimIds []string
-
-	if session != "" {
-		userSessionClaims := redisClient.SMembers("claim-user-session:" + user + "-" + session)
-
-		if userSessionClaims.Err() != nil {
-			c.AbortWithStatusJSON(500, map[string]interface{}{
-				"success":   false,
-				"error":     "Error getting claim",
-				"errorCode": common.ErrorGettingClaim,
-			})
-			return
-		}
-
-		claimIds = userSessionClaims.Val()
-	} else {
-		userClaims := redisClient.SMembers("claim-user:" + user)
-
-		if userClaims.Err() != nil {
-			c.AbortWithStatusJSON(500, map[string]interface{}{
-				"success":   false,
-				"error":     "Error getting claim",
-				"errorCode": common.ErrorGettingClaim,
-			})
-			return
-		}
-
-		claimIds = userClaims.Val()
+	claimIds, apiError := resolveClaims(common.ResolveOptions{
+		Connection: connId,
+		User:       user,
+		Session:    session,
+	})
+	if apiError != nil {
+		apiError.Send(c)
+		return
 	}
 
+	// Gets all claim information
 	var claimsWaitGroup sync.WaitGroup
 	claimsWaitGroup.Add(len(claimIds))
 
 	var claimsLock sync.Mutex
 	claims := make([]gin.H, 0)
-
-	stop := false
 
 	for _, claimId := range claimIds {
 		claimId := claimId
@@ -93,17 +72,16 @@ func infoHandler(c *gin.Context) {
 			claim := redisClient.HGetAll("claim:" + claimId)
 
 			// Stop if one of the Redis commands failed
-			if stop {
+			if apiError != nil {
 				return
 			}
 
 			if claim.Err() != nil {
-				stop = true
-				c.AbortWithStatusJSON(500, map[string]interface{}{
-					"success":   false,
-					"error":     "Error getting claim",
-					"errorCode": common.ErrorGettingClaim,
-				})
+				apiError = &common.ApiError{
+					InternalError: claim.Err(),
+					ErrorCode:     common.ErrorGettingClaim,
+					StatusCode:    500,
+				}
 				return
 			}
 
@@ -127,15 +105,22 @@ func infoHandler(c *gin.Context) {
 
 	claimsWaitGroup.Wait()
 
+	if apiError != nil {
+		apiError.Send(c)
+		return
+	}
+
+	// Get connection(s)
 	if connId != "" {
 		connection := redisClient.HGetAll("conn:" + connId)
 
 		if connection.Err() != nil {
-			c.AbortWithStatusJSON(500, map[string]interface{}{
-				"success":   false,
-				"error":     "Error getting connection",
-				"errorCode": common.ErrorGettingConnection,
-			})
+			apiError := common.ApiError{
+				InternalError: connection.Err(),
+				StatusCode:    500,
+				ErrorCode:     common.ErrorGettingConnection,
+			}
+			apiError.Send(c)
 			return
 		}
 
@@ -154,16 +139,16 @@ func infoHandler(c *gin.Context) {
 			"connections": []gin.H{formatConnection(connId, connection.Val())},
 			"claims":      claims,
 		})
-		return
 	} else if user != "" {
 		user := redisClient.SMembers("user:" + user)
 
 		if user.Err() != nil {
-			c.AbortWithStatusJSON(500, map[string]interface{}{
-				"success":   false,
-				"error":     "Error getting user",
-				"errorCode": common.ErrorGettingUser,
-			})
+			apiError := common.ApiError{
+				InternalError: user.Err(),
+				StatusCode:    500,
+				ErrorCode:     common.ErrorGettingUser,
+			}
+			apiError.Send(c)
 			return
 		}
 
@@ -183,7 +168,7 @@ func infoHandler(c *gin.Context) {
 		var connectionsLock sync.Mutex
 		connections := make([]gin.H, 0)
 
-		stop := false
+		var apiError *common.ApiError
 
 		for _, connId := range user.Val() {
 			connId := connId
@@ -193,17 +178,16 @@ func infoHandler(c *gin.Context) {
 				connection := redisClient.HGetAll("conn:" + connId)
 
 				// Stop if one of the Redis commands failed
-				if stop {
+				if apiError != nil {
 					return
 				}
 
 				if connection.Err() != nil {
-					stop = true
-					c.AbortWithStatusJSON(500, map[string]interface{}{
-						"success":   false,
-						"error":     "Error getting connection",
-						"errorCode": common.ErrorGettingConnection,
-					})
+					apiError = &common.ApiError{
+						InternalError: connection.Err(),
+						StatusCode:    500,
+						ErrorCode:     common.ErrorGettingConnection,
+					}
 					return
 				}
 
@@ -225,18 +209,21 @@ func infoHandler(c *gin.Context) {
 
 		connectionsWaitGroup.Wait()
 
+		if apiError != nil {
+			apiError.Send(c)
+			return
+		}
+
 		c.AbortWithStatusJSON(200, map[string]interface{}{
 			"success":     true,
 			"connections": connections,
 			"claims":      claims,
 		})
-		return
 	} else {
-		c.AbortWithStatusJSON(404, map[string]interface{}{
-			"success":   false,
-			"error":     "Connection ID or user ID is missing",
-			"errorCode": common.ErrorMissingConnectionOrUser,
-		})
-		return
+		apiError := common.ApiError{
+			StatusCode: 400,
+			ErrorCode:  common.ErrorMissingConnectionOrUser,
+		}
+		apiError.Send(c)
 	}
 }

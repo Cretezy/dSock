@@ -9,59 +9,47 @@ import (
 )
 
 func disconnectHandler(c *gin.Context) {
+	connId := c.Query("id")
 	user := c.Query("user")
 	session := c.Query("session")
-	connId := c.Query("id")
 	keepClaims := c.Query("keepClaims") == "true"
 
-	workerIds, ok := resolveWorkers(c)
+	resolveOptions := common.ResolveOptions{
+		Connection: connId,
+		User:       user,
+		Session:    session,
+	}
 
-	if !ok {
+	// Get all worker IDs that the target is connected to
+	workerIds, apiError := resolveWorkers(resolveOptions)
+
+	if apiError != nil {
+		apiError.Send(c)
 		return
 	}
 
 	if !keepClaims {
-		// Expire claims instantly
-		var claims []string
-		if session != "" {
-			userSessionClaims := redisClient.SMembers("claim-user-session:" + user + "-" + session)
+		// Expire claims instantly, must resolve all claims for target
+		claimIds, apiError := resolveClaims(resolveOptions)
 
-			if userSessionClaims.Err() != nil {
-				c.AbortWithStatusJSON(500, map[string]interface{}{
-					"success":   false,
-					"error":     "Error getting claim",
-					"errorCode": common.ErrorGettingClaim,
-				})
-				return
-			}
-
-			claims = userSessionClaims.Val()
-		} else {
-			userClaims := redisClient.SMembers("claim-user:" + user)
-
-			if userClaims.Err() != nil {
-				c.AbortWithStatusJSON(500, map[string]interface{}{
-					"success":   false,
-					"error":     "Error getting claim",
-					"errorCode": common.ErrorGettingClaim,
-				})
-				return
-			}
-
-			claims = userClaims.Val()
+		if apiError != nil {
+			apiError.Send(c)
+			return
 		}
 
-		claimKeys := make([]string, len(claims))
-		for index, claim := range claims {
+		// Delete all resolved claims
+		claimKeys := make([]string, len(claimIds))
+		for index, claim := range claimIds {
 			claimKeys[index] = "claim:" + claim
 		}
 
-		redisClient.SRem("claim-user:"+user, claims)
-		redisClient.SRem("claim-user-session:"+user+"-"+session, claims)
+		redisClient.SRem("claim-user:"+user, claimIds)
+		redisClient.SRem("claim-user-session:"+user+"-"+session, claimIds)
 
 		redisClient.Del(claimKeys...)
 	}
 
+	// Prepare message for worker
 	message := &protos.Message{
 		User:       user,
 		Connection: connId,
@@ -72,16 +60,16 @@ func disconnectHandler(c *gin.Context) {
 	rawMessage, err := proto.Marshal(message)
 
 	if err != nil {
-		c.AbortWithStatusJSON(500, map[string]interface{}{
-			"success":   false,
-			"error":     "Error marshalling message",
-			"errorCode": common.ErrorMarshallingMessage,
-		})
+		apiError := common.ApiError{
+			ErrorCode:  common.ErrorMarshallingMessage,
+			StatusCode: 500,
+		}
+		apiError.Send(c)
 		return
 	}
 
+	// Send message to all resolved workers
 	var workersWaitGroup sync.WaitGroup
-
 	workersWaitGroup.Add(len(workerIds))
 
 	for _, workerId := range workerIds {
@@ -89,7 +77,6 @@ func disconnectHandler(c *gin.Context) {
 		go func() {
 			defer workersWaitGroup.Done()
 
-			// Set: type, message, user, session
 			redisClient.Publish(workerId, rawMessage)
 		}()
 	}

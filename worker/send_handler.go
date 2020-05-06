@@ -1,11 +1,13 @@
 package main
 
 import (
+	"github.com/Cretezy/dSock/common"
 	"github.com/Cretezy/dSock/common/protos"
 )
 
 func send(message *protos.Message) {
-	connections, ok := resolveConnections(ResolveOptions{
+	// Resolve all local connections for message target
+	connections, ok := resolveConnections(common.ResolveOptions{
 		Connection: message.Connection,
 		User:       message.User,
 		Session:    message.Session,
@@ -15,6 +17,7 @@ func send(message *protos.Message) {
 		return
 	}
 
+	// Send to all connections for target
 	for _, connection := range connections {
 		if connection.Sender == nil || connection.CloseChannel == nil {
 			continue

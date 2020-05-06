@@ -12,50 +12,52 @@ type Authentication struct {
 	Session string
 }
 
-func authenticate(c *gin.Context) *Authentication {
+func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 	if claim := c.Query("claim"); claim != "" {
-
+		// Validate claim
 		claimData := redisClient.HGetAll("claim:" + claim)
 
 		if claimData.Err() != nil {
-			c.AbortWithStatusJSON(500, map[string]interface{}{
-				"success":   false,
-				"error":     "Error getting claim",
-				"errorCode": common.ErrorGettingClaim,
-			})
-			return nil
+			return nil, &common.ApiError{
+				InternalError: claimData.Err(),
+				ErrorCode:     common.ErrorGettingClaim,
+				StatusCode:    500,
+			}
+		}
+
+		if len(claimData.Val()) == 0 {
+			// Claim doesn't exist
+			return nil, &common.ApiError{
+				ErrorCode:  common.ErrorMissingClaim,
+				StatusCode: 400,
+			}
 		}
 
 		user, hasUser := claimData.Val()["user"]
-
 		if !hasUser {
-			c.AbortWithStatusJSON(400, map[string]interface{}{
-				"success":   false,
-				"error":     "Could not find claim",
-				"errorCode": common.ErrorMissingClaim,
-			})
-			return nil
+			// Invalid claim (missing user)
+			return nil, &common.ApiError{
+				ErrorCode:  common.ErrorMissingClaim,
+				StatusCode: 400,
+			}
 		}
 
 		expirationTime, err := time.Parse(time.RFC3339, claimData.Val()["expiration"])
-
 		if err != nil {
-			c.AbortWithStatusJSON(500, map[string]interface{}{
-				"success":   false,
-				"error":     "Error parsing expiration",
-				"errorCode": common.ErrorInvalidExpiration,
-			})
-			return nil
+			// Invalid expiration (can't parse)
+			return nil, &common.ApiError{
+				InternalError: err,
+				ErrorCode:     common.ErrorInvalidExpiration,
+				StatusCode:    500,
+			}
 		}
 
 		// Double check that claim is not expired
 		if expirationTime.Before(time.Now()) {
-			c.AbortWithStatusJSON(400, map[string]interface{}{
-				"success":   false,
-				"error":     "Claim has expired",
-				"errorCode": common.ErrorExpiredClaim,
-			})
-			return nil
+			return nil, &common.ApiError{
+				ErrorCode:  common.ErrorExpiredClaim,
+				StatusCode: 400,
+			}
 		}
 
 		session := claimData.Val()["session"]
@@ -70,33 +72,31 @@ func authenticate(c *gin.Context) *Authentication {
 		return &Authentication{
 			User:    user,
 			Session: session,
-		}
+		}, nil
 	} else if jwtToken := c.Query("jwt"); jwtToken != "" && options.Jwt.JwtSecret != "" {
+		// Valid JWT (only enabled if `jwt_secret` is set)
 		token, err := jwt.ParseWithClaims(jwtToken, &JwtClaims{}, func(token *jwt.Token) (interface{}, error) {
 			return []byte(options.Jwt.JwtSecret), nil
 		})
-
 		if err != nil {
-			c.AbortWithStatusJSON(400, map[string]interface{}{
-				"success":   false,
-				"error":     "Could not validate JWT",
-				"errorCode": common.ErrorInvalidJwt,
-			})
-			return nil
+			return nil, &common.ApiError{
+				InternalError: err,
+				ErrorCode:     common.ErrorInvalidJwt,
+				StatusCode:    400,
+			}
 		}
 
+		// JWT claims, not "claim" as above
 		claims := token.Claims.(*JwtClaims)
 
 		return &Authentication{
 			User:    claims.Subject,
 			Session: claims.Session,
-		}
+		}, nil
 	} else {
-		c.AbortWithStatusJSON(400, map[string]interface{}{
-			"success":   false,
-			"error":     "Did not provide an authentication method",
-			"errorCode": common.ErrorMissingAuthentication,
-		})
-		return nil
+		return nil, &common.ApiError{
+			ErrorCode:  common.ErrorMissingAuthentication,
+			StatusCode: 400,
+		}
 	}
 }

@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -42,6 +41,7 @@ func init() {
 func main() {
 	log.Printf("Starting dSock worker %s\n", common.DSockVersion)
 
+	// Setup application
 	redisClient = redis.NewClient(options.RedisOptions)
 
 	_, err := redisClient.Ping().Result()
@@ -60,12 +60,13 @@ func main() {
 	router := gin.Default()
 	router.GET(common.PathConnect, connectHandler)
 
+	// Start HTTP server
 	srv := &http.Server{
 		Addr:    options.Address,
 		Handler: router,
 	}
 
-	closed := false
+	signalQuit := make(chan os.Signal, 1)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -74,12 +75,13 @@ func main() {
 		}
 	}()
 
+	// Look receiving messages from Redis
 	go func() {
 		for {
 			redisMessage, err := subscription.ReceiveMessage()
 			if err != nil {
-				// TODO: Add better handling
-				println("redis receive error", err)
+				// TODO: Possibly add better handling
+				log.Printf("Error receiving from Redis: %s\n", err)
 				break
 			}
 
@@ -89,13 +91,13 @@ func main() {
 
 			if err != nil {
 				// Couldn't parse message
-				println("redis invalid message", err)
+				log.Printf("Invalid message from Redis: %s\n", err)
 				continue
 			}
 
 			go send(&message)
 
-			if closed {
+			if signalQuit == nil {
 				break
 			}
 		}
@@ -103,8 +105,7 @@ func main() {
 
 	log.Printf("Starting on: %s\n", options.Address)
 
-	signalQuit := make(chan os.Signal, 1)
-
+	// Listen for signal or message in quit channel
 	signal.Notify(signalQuit, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
@@ -112,8 +113,9 @@ func main() {
 	case <-signalQuit:
 	}
 
-	closed = true
+	signalQuit = nil
 
+	// Server shutdown
 	log.Print("Shutting server down...\n")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -122,19 +124,16 @@ func main() {
 		log.Printf("Error during server shutdown: %v\n", err)
 	}
 
+	// Cleanup
 	_ = subscription.Close()
 
-	var connectionsWaitGroup sync.WaitGroup
+	// Disconnect all connections
+	for _, connection := range connections {
+		connection.CloseChannel <- struct{}{}
+	}
 
-	connectionsWaitGroup.Add(len(connections))
+	// Allow time to disconnect & clear from Redis
+	time.Sleep(time.Second)
 
-	go func() {
-		for _, connection := range connections {
-			connection.CloseChannel <- struct{}{}
-		}
-	}()
-
-	connectionsWaitGroup.Wait()
-
-	log.Print("Server exited\n")
+	log.Println("Server stopped")
 }

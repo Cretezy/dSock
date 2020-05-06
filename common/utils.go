@@ -17,14 +17,27 @@ func RemoveString(texts []string, text string) []string {
 
 func UniqueString(texts []string) []string {
 	keys := make(map[string]struct{})
-	list := []string{}
+
+	removed := 0
 	for _, text := range texts {
 		if _, value := keys[text]; !value {
 			keys[text] = struct{}{}
-			list = append(list, text)
+			texts[removed] = text
+			removed++
 		}
 	}
-	return list
+	return texts[:removed]
+}
+
+func RemoveEmpty(texts []string) []string {
+	removed := 0
+	for _, text := range texts {
+		if text != "" {
+			texts[removed] = text
+			removed++
+		}
+	}
+	return texts[:removed]
 }
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

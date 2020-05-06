@@ -2,62 +2,62 @@ package main
 
 import (
 	"github.com/Cretezy/dSock/common"
-	"github.com/gin-gonic/gin"
 	"sync"
 )
 
-func resolveWorkers(c *gin.Context) ([]string, bool) {
-	connId := c.Query("id")
-	user := c.Query("user")
-
+/// Resolves the workers holding the connection
+func resolveWorkers(options common.ResolveOptions) ([]string, *common.ApiError) {
 	workerIds := make([]string, 0)
 
 	var workersLock sync.Mutex
-	stop := false
+	var apiError *common.ApiError
 
-	if connId != "" {
-		connection := redisClient.HGetAll("conn:" + connId)
+	if options.Connection != "" {
+		// Get a connection by connection ID
+		connection := redisClient.HGetAll("conn:" + options.Connection)
+
+		if connection.Err() != nil {
+			return nil, &common.ApiError{
+				InternalError: connection.Err(),
+				StatusCode:    500,
+				ErrorCode:     common.ErrorGettingConnection,
+			}
+		}
+
+		if len(connection.Val()) == 0 {
+			// Connection doesn't exist
+			return []string{}, nil
+		}
 
 		workerId, hasWorkerId := connection.Val()["workerId"]
 
-		if connection.Err() != nil {
-			c.AbortWithStatusJSON(500, map[string]interface{}{
-				"success":   false,
-				"error":     "Error getting connection",
-				"errorCode": common.ErrorGettingConnection,
-			})
-			return nil, false
-		}
-
 		if !hasWorkerId {
-			// Connection doesn't exist
-			return []string{}, true
+			// Is missing worker ID, ignoring
+			return []string{}, nil
 		}
 
 		workerIds = append(workerIds, workerId)
-	} else if user != "" {
-		user := redisClient.SMembers("user:" + user)
+	} else if options.User != "" {
+		// Get all connections for a user (optionally filtered by session)
+		user := redisClient.SMembers("user:" + options.User)
 
 		if user.Err() != nil {
-			c.AbortWithStatusJSON(500, map[string]interface{}{
-				"success":   false,
-				"error":     "Error getting user",
-				"errorCode": common.ErrorGettingUser,
-			})
-			return nil, false
+			return nil, &common.ApiError{
+				InternalError: user.Err(),
+				StatusCode:    500,
+				ErrorCode:     common.ErrorGettingUser,
+			}
 		}
 
 		if len(user.Val()) == 0 {
 			// User doesn't exist
-			return []string{}, true
+			return []string{}, nil
 		}
 
-		session := c.Query("session")
-
 		var usersWaitGroup sync.WaitGroup
-
 		usersWaitGroup.Add(len(user.Val()))
 
+		// Resolves connection for each user connection
 		for _, connId := range user.Val() {
 			connId := connId
 			go func() {
@@ -65,30 +65,34 @@ func resolveWorkers(c *gin.Context) ([]string, bool) {
 
 				connection := redisClient.HGetAll("conn:" + connId)
 
-				workerId, hasWorkerId := connection.Val()["workerId"]
-
 				// Stop if one of the Redis commands failed
-				if stop {
+				if apiError != nil {
 					return
 				}
 
 				if connection.Err() != nil {
-					stop = true
-					c.AbortWithStatusJSON(500, map[string]interface{}{
-						"success":   false,
-						"error":     "Error getting connection",
-						"errorCode": common.ErrorGettingConnection,
-					})
+					apiError = &common.ApiError{
+						InternalError: connection.Err(),
+						StatusCode:    500,
+						ErrorCode:     common.ErrorGettingConnection,
+					}
 					return
 				}
 
-				if !hasWorkerId {
+				if len(connection.Val()) == 0 {
 					// Connection doesn't exist
 					return
 				}
 
-				// Target specific session(s) for user
-				if session != "" && connection.Val()["session"] != session {
+				workerId, hasWorkerId := connection.Val()["workerId"]
+
+				if !hasWorkerId {
+					// Is missing worker ID, ignoring
+					return
+				}
+
+				// Target specific session(s) for user if set
+				if options.Session != "" && connection.Val()["session"] != options.Session {
 					return
 				}
 
@@ -100,17 +104,16 @@ func resolveWorkers(c *gin.Context) ([]string, bool) {
 
 		usersWaitGroup.Wait()
 	} else {
-		c.AbortWithStatusJSON(404, map[string]interface{}{
-			"success":   false,
-			"error":     "Connection ID or user ID is missing",
-			"errorCode": common.ErrorMissingConnectionOrUser,
-		})
-		return nil, false
+		// No targeting options where provided
+		return nil, &common.ApiError{
+			StatusCode: 400,
+			ErrorCode:  common.ErrorMissingConnectionOrUser,
+		}
 	}
 
-	if stop {
-		return nil, false
+	if apiError != nil {
+		return nil, apiError
 	}
 
-	return common.UniqueString(workerIds), true
+	return common.RemoveEmpty(common.UniqueString(workerIds)), nil
 }
