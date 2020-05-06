@@ -2,17 +2,19 @@
 
 - **Breaking**
   - Changed response format for creating claims
-    - All claim data is inside the `claim` key, and more data is present
-      Example:
-      ```json5
-      // Before
+    - All claim data is now inside the `claim` key, and more data is present. Example:
+    
+      Before:
+      ```json
       {
         "success": true,
         "id": "XXX",
         "expiration": 1588473164
       }
+      ```
       
-      // After
+      After:
+      ```json
       {
         "success": true,
         "claim": {
@@ -24,14 +26,13 @@
       }
       ```
 
-- Added tests (E2E)
+- Added tests (E2E, unit) and CI
 
 ## v0.1.2 - 2020-05-06
 
 - Improved code documentation, refactored to make it cleaner
 - Improved API response code (refactored error handling)
 - Small performance improvements for some hot-paths
-- Actually bump version in code
 
 ## v0.1.1 - 2020-05-05
 
