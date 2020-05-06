@@ -114,3 +114,46 @@ func TestInfoConnection(t *testing.T) {
 		t.Fatal("Info claim session doesn't match (expected != actual):", claimData["session"], "!=", infoConnectionData["session"])
 	}
 }
+
+func TestInfoMissing(t *testing.T) {
+	info, err := getInfo(infoOptions{
+		User:    "info",
+		Session: "missing",
+	})
+
+	if err != nil {
+		t.Fatal("Error during getting info:", err.Error())
+	}
+
+	if info["success"].(bool) != true {
+		t.Fatal("Application error during getting info:", info["error"])
+	}
+
+	infoClaims := info["claims"].([]interface{})
+
+	if len(infoClaims) != 0 {
+		t.Fatal("Invalid number of claims, expected 0:", len(infoClaims))
+	}
+
+	infoConnections := info["connections"].([]interface{})
+
+	if len(infoConnections) != 0 {
+		t.Fatal("Invalid number of connections, expected 0:", len(infoConnections))
+	}
+}
+
+func TestInfoNoTarget(t *testing.T) {
+	info, err := getInfo(infoOptions{})
+
+	if err != nil {
+		t.Fatal("Error during getting info:", err.Error())
+	}
+
+	if info["success"].(bool) != false {
+		t.Fatal("Application succeeded when it should have failed during getting info:", info["error"])
+	}
+
+	if info["errorCode"] != "MISSING_CONNECTION_OR_USER" {
+		t.Fatal("Error code did not match expected (MISSING_CONNECTION_OR_USER):", info["error"])
+	}
+}

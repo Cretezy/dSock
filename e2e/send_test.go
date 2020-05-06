@@ -157,7 +157,13 @@ func TestConnectionSend(t *testing.T) {
 		t.Fatal("Application error during getting info:", info["error"])
 	}
 
-	id := info["connections"].([]interface{})[0].(map[string]interface{})["id"].(string)
+	connections := info["connections"].([]interface{})
+
+	if len(connections) != 1 {
+		t.Fatal("Invalid number of connections, expected 1:", len(connections))
+	}
+
+	id := connections[0].(map[string]interface{})["id"].(string)
 
 	message, err := sendMessage(sendOptions{
 		Id:      id,
@@ -184,5 +190,39 @@ func TestConnectionSend(t *testing.T) {
 
 	if bytes.Compare(data, []byte{1, 2, 3, 4}) != 0 {
 		t.Fatal("Message does not match. Got:", string(data))
+	}
+}
+
+func TestSendNoTarget(t *testing.T) {
+	message, err := sendMessage(sendOptions{})
+
+	if err != nil {
+		t.Fatal("Error during sending message:", err.Error())
+	}
+
+	if message["success"].(bool) != false {
+		t.Fatal("Application succeeded when it should have failed during sending message:", message["error"])
+	}
+
+	if message["errorCode"] != "MISSING_CONNECTION_OR_USER" {
+		t.Fatal("Error code did not match expected (MISSING_CONNECTION_OR_USER):", message["error"])
+	}
+}
+
+func TestSendNoType(t *testing.T) {
+	message, err := sendMessage(sendOptions{
+		Id: "a",
+	})
+
+	if err != nil {
+		t.Fatal("Error during sending message:", err.Error())
+	}
+
+	if message["success"].(bool) != false {
+		t.Fatal("Application succeeded when it should have failed during sending message:", message["error"])
+	}
+
+	if message["errorCode"] != "INVALID_MESSAGE_TYPE" {
+		t.Fatal("Error code did not match expected (INVALID_MESSAGE_TYPE):", message["error"])
 	}
 }
