@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 func checkConnectionError(suite suite.Suite, err error, resp *http.Response) bool {
@@ -17,6 +18,9 @@ func checkConnectionError(suite suite.Suite, err error, resp *http.Response) boo
 
 		return false
 	}
+
+	// Connection was successful, wait a tiny bit to make sure connection is set in Redis
+	time.Sleep(time.Millisecond)
 
 	return true
 }
