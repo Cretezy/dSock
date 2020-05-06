@@ -1,3 +1,34 @@
+## Unreleased
+
+- **Breaking**
+  - Changed response format for creating claims
+    - All claim data is now inside the `claim` key, and more data is present. Example:
+    
+      Before:
+      ```json
+      {
+        "success": true,
+        "id": "XXX",
+        "expiration": 1588473164
+      }
+      ```
+      
+      After:
+      ```json
+      {
+        "success": true,
+        "claim": {
+          "id": "XXX",
+          "expiration": 1588473164,
+          "user": "a",
+          "session": "b"
+        }
+      }
+      ```
+
+- Added tests (E2E, unit) and CI
+- Added past expiration validation (doesn't allow expiration dates in the past) during claim creation
+
 ## v0.1.2 - 2020-05-06
 
 - Improved code documentation, refactored to make it cleaner

@@ -118,6 +118,10 @@ SendLoop:
 			break
 		case <-connection.CloseChannel:
 			connection.CloseChannel = nil
+			// Send close message with 1000
+			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			// Sleep a tiny bit to allow message to be sent before closing connection
+			time.Sleep(time.Millisecond)
 			_ = conn.Close()
 
 			redisClient.Del("conn:" + connId)

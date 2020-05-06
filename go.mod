@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/spf13/viper v1.6.3
+	github.com/stretchr/testify v1.4.0
 	google.golang.org/protobuf v1.21.0
 )
 
