@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Install Task
-        run: curl -sL https://taskfile.dev/install.sh | BINDIR=/usr/bin sh
+        uses: Arduino/actions/setup-taskfile@master
       - name: Test
         run: task tests:e2e
   unit:
@@ -24,6 +24,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Install Task
-        run: curl -sL https://taskfile.dev/install.sh | BINDIR=/usr/bin sh
+        uses: Arduino/actions/setup-taskfile@master
       - name: Test
         run: task tests:unit
