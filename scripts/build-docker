@@ -1,8 +1,0 @@
-#!/bin/bash
-
-set -e
-
-cd "$(dirname "$0")"/..
-
-docker build -t dsock-api -f api/Dockerfile .
-docker build -t dsock-worker -f worker/Dockerfile .

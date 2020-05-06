@@ -1,3 +1,7 @@
+## Unreleased
+
+- Replace `scripts` directory with [Task](https://taskfile.dev)
+
 ## v0.2.0 - 2020-05-06
 
 - **Breaking**

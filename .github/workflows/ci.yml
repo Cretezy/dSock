@@ -13,13 +13,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Install Task
+        run: curl -sL https://taskfile.dev/install.sh | BINDIR=/usr/bin sh
       - name: Test
-        run: sh scripts/run-e2e
+        run: task tests:e2e
   unit:
     name: Unit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Install Task
+        run: curl -sL https://taskfile.dev/install.sh | BINDIR=/usr/bin sh
       - name: Test
-        run: sh scripts/run-unit
+        run: task tests:unit

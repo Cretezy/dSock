@@ -4,16 +4,16 @@
 
 - Bump version in `common/version.go`
 - Make sure `CHANGELOG.md` is up to date and contains version changelog
-- Make sure tests pass (`scripts/run-tests`)
+- Make sure tests pass (`task tests`)
 
 ## Binaries
 
 - Create and push version tag
-- Run `scripts/build-binaries`
+- Run `task build:binaries`
 - Upload all files in `build` to GitHub release
 
 ## Docker
 
-- Run `scripts/build-docker`
-- Run `scripts/push-images <version>` (excludes `v`)
-- Run `scripts/push-images latest`
+- Run `task build:docker`
+- Run `task push:docker TAG=<version>` (excludes `v`)
+- Run `task push:docker TAG=latest`
