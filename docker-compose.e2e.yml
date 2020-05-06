@@ -3,12 +3,10 @@ version: '3.7'
 services:
   e2e:
     build:
-      dockerfile: Dockerfile
-      context: ..
+      dockerfile: e2e/Dockerfile
+      context: .
     volumes:
-      - ..:/app
-    ports:
-      - 3000:80
+      - .:/app
     depends_on:
       - api
       - worker

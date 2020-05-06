@@ -6,4 +6,4 @@ cd "$(dirname "$0")"/..
 
 docker-compose down
 
-docker-compose -f docker-compose.yml -f e2e/docker-compose.e2e.yml run e2e
+docker-compose -f docker-compose.yml -f docker-compose.e2e.yml run e2e
