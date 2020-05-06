@@ -4,9 +4,9 @@ services:
   e2e:
     build:
       dockerfile: Dockerfile
-      context: .
+      context: ..
     volumes:
-      - .:/app
+      - ..:/app
     ports:
       - 3000:80
     depends_on:
