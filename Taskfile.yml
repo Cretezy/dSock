@@ -8,18 +8,28 @@ tasks:
       # Run sequentially
       - task: tests:unit
       - task: tests:e2e
+
   tests:unit:
     cmds:
       - go test ./common
       - go test ./api
       - go test ./worker
+
   tests:e2e:
     cmds:
       - docker-compose down
       - docker-compose -f docker-compose.yml -f docker-compose.e2e.yml run e2e
+
   build:protos:
     cmds:
       - protoc --proto_path=protos --go_opt=paths=source_relative --go_out=common/protos protos/*
+
+  build:
+    cmds:
+      # Run sequentially
+      - task: build:binaries
+      - task: build:docker
+
   build:binaries:
     cmds:
       - rm -rf build && mkdir build
@@ -39,10 +49,12 @@ tasks:
       - cd worker && GOOS=windows GOARCH=amd64 go build -o ../build/worker-windows-amd64 -ldflags "-s -w"
       - echo "Building worker - macOS"
       - cd worker && GOOS=darwin GOARCH=amd64 go build -o ../build/worker-darwin-amd64 -ldflags "-s -w"
+
   build:docker:
     cmds:
       - docker build -t dsock-api -f api/Dockerfile .
       - docker build -t dsock-worker -f worker/Dockerfile .
+
   push:docker:
     cmds:
       - echo "Tagging images as {{.TAG}}..."

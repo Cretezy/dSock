@@ -27,3 +27,19 @@ jobs:
         uses: Arduino/actions/setup-taskfile@master
       - name: Test
         run: task tests:unit
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Task
+        uses: Arduino/actions/setup-taskfile@master
+      - name: Install Go
+        uses: actions/setup-go@v2
+      - name: build
+        run: task build
+      - name: Upload build artifacts (binaries)
+        uses: actions/upload-artifact@v1
+        with:
+          path: build
