@@ -34,29 +34,28 @@ func (suite *InfoSuite) TestInfoClaim() {
 
 	infoClaims := info["claims"].([]interface{})
 
-	if !suite.Len(infoClaims, 1, "Invalid number of claims") {
+	if !suite.Len(infoClaims, 1, "Incorrect number of claims") {
 		return
 	}
 
 	claimData := claim["claim"].(map[string]interface{})
-
 	infoClaimData := infoClaims[0].(map[string]interface{})
 
 	if !suite.Equal(claimData["id"], infoClaimData["id"], "Info claim ID doesn't match claim") {
 		return
 	}
 
-	if !suite.Equal("info", claimData["user"], "Invalid claim user") {
+	if !suite.Equal("info", claimData["user"], "Incorrect claim user") {
 		return
 	}
-	if !suite.Equal("info", infoClaimData["user"], "Invalid info claim user") {
+	if !suite.Equal("info", infoClaimData["user"], "Incorrect info claim user") {
 		return
 	}
 
-	if !suite.Equal("claim", claimData["session"], "Invalid claim user session") {
+	if !suite.Equal("claim", claimData["session"], "Incorrect claim user session") {
 		return
 	}
-	if !suite.Equal("claim", infoClaimData["session"], "Invalid info claim user session") {
+	if !suite.Equal("claim", infoClaimData["session"], "Incorrect info claim user session") {
 		return
 	}
 
@@ -124,18 +123,26 @@ func (suite *InfoSuite) TestInfoConnection() {
 	}
 
 	infoConnections := info["connections"].([]interface{})
-	if !suite.Len(infoConnections, 1, "Invalid number of connections") {
+	if !suite.Len(infoConnections, 1, "Incorrect number of connections") {
 		return
 	}
 
 	claimData := claim["claim"].(map[string]interface{})
 	infoConnectionData := infoConnections[0].(map[string]interface{})
 
-	suite.Equal("info", claimData["user"], "Invalid claim user")
-	suite.Equal("info", infoConnectionData["user"], "Invalid connection user")
+	if !suite.Equal("info", claimData["user"], "Incorrect claim user") {
+		return
+	}
+	if !suite.Equal("info", infoConnectionData["user"], "Incorrect connection user") {
+		return
+	}
 
-	suite.Equal("connection", claimData["session"], "Invalid claim user session")
-	suite.Equal("connection", infoConnectionData["session"], "Invalid connection user session")
+	if !suite.Equal("connection", claimData["session"], "Incorrect claim user session") {
+		return
+	}
+	if !suite.Equal("connection", infoConnectionData["session"], "Incorrect connection user session") {
+		return
+	}
 }
 
 func (suite *InfoSuite) TestInfoMissing() {
@@ -148,12 +155,12 @@ func (suite *InfoSuite) TestInfoMissing() {
 	}
 
 	infoClaims := info["claims"].([]interface{})
-	if !suite.Len(infoClaims, 0, "Invalid number of claims") {
+	if !suite.Len(infoClaims, 0, "Incorrect number of claims") {
 		return
 	}
 
 	infoConnections := info["connections"].([]interface{})
-	if !suite.Len(infoConnections, 0, "Invalid number of connections") {
+	if !suite.Len(infoConnections, 0, "Incorrect number of connections") {
 		return
 	}
 }

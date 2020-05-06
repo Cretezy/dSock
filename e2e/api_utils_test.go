@@ -3,6 +3,7 @@ package dsock_test
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -12,6 +13,36 @@ import (
 var token = "abc123"
 
 // Will eventually be separated into it's own Go dSock client
+
+func doApiRequest(method, path string, params url.Values, body io.Reader) (map[string]interface{}, error) {
+	request, err := http.NewRequest(method, "http://api"+path+"?"+params.Encode(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	responseBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
 
 type claimOptions struct {
 	Id         string
@@ -32,7 +63,6 @@ func createClaim(options claimOptions) (map[string]interface{}, error) {
 	if options.Id != "" {
 		params.Add("id", options.Id)
 	}
-
 	if options.Duration != 0 {
 		params.Add("duration", strconv.Itoa(options.Duration))
 	}
@@ -40,33 +70,7 @@ func createClaim(options claimOptions) (map[string]interface{}, error) {
 		params.Add("expiration", strconv.Itoa(options.Expiration))
 	}
 
-	req, err := http.NewRequest("POST", "http://api/claim?"+params.Encode(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return doApiRequest("POST", "/claim", params, nil)
 }
 
 type sendOptions struct {
@@ -90,33 +94,7 @@ func sendMessage(options sendOptions) (map[string]interface{}, error) {
 		params.Add("id", options.Id)
 	}
 
-	req, err := http.NewRequest("POST", "http://api/send?"+params.Encode(), bytes.NewReader(options.Message))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return doApiRequest("POST", "/send", params, bytes.NewReader(options.Message))
 }
 
 type infoOptions struct {
@@ -138,33 +116,7 @@ func getInfo(options infoOptions) (map[string]interface{}, error) {
 		params.Add("id", options.Id)
 	}
 
-	req, err := http.NewRequest("GET", "http://api/info?"+params.Encode(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return doApiRequest("GET", "/info", params, nil)
 }
 
 type disconnectOptions struct {
@@ -189,31 +141,6 @@ func disconnect(options disconnectOptions) (map[string]interface{}, error) {
 		params.Add("keepClaims", "true")
 	}
 
-	req, err := http.NewRequest("POST", "http://api/disconnect?"+params.Encode(), nil)
-	if err != nil {
-		return nil, err
-	}
+	return doApiRequest("POST", "/disconnect", params, nil)
 
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }

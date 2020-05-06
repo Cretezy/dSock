@@ -114,7 +114,7 @@ func (suite *DisconnectSuite) TestConnectionDisconnect() {
 	}
 
 	infoConnections := info["connections"].([]interface{})
-	if !suite.Len(infoConnections, 1, "Invalid number of connections") {
+	if !suite.Len(infoConnections, 1, "Incorrect number of connections") {
 		return
 	}
 

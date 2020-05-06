@@ -14,7 +14,7 @@ The sessions is the name of the test. If no session is set, add the name in the 
 
 Run `script/run-e2e` (file in root of project, can be ran from anywhere) to run the E2E tests.
 
-Tests are ran inside Docker Compose, using an additional configuration (`docker-compose.e2e.yml` inside this directory).
+Tests are ran inside Docker Compose, using an additional configuration (`docker-compose.e2e.yml`).
 This adds the `e2e` service on top of the normal development services.
 
 The script also runs `docker-compose down` before running to stop all services, which clears Redis' storage.

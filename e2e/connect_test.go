@@ -41,18 +41,18 @@ func (suite *ConnectSuite) TestClaimConnect() {
 	}
 
 	connections := info["connections"].([]interface{})
-	if !suite.Len(connections, 1, "Invalid number of connections") {
+	if !suite.Len(connections, 1, "Incorrect number of connections") {
 		return
 	}
 
 	claimData := claim["claim"].(map[string]interface{})
 	connection := connections[0].(map[string]interface{})
 
-	suite.Equal("connect", claimData["user"], "Invalid claim user")
-	suite.Equal("connect", connection["user"], "Invalid connection user")
+	suite.Equal("connect", claimData["user"], "Incorrect claim user")
+	suite.Equal("connect", connection["user"], "Incorrect connection user")
 
-	suite.Equal("claim", claimData["session"], "Invalid claim user session")
-	suite.Equal("claim", connection["session"], "Invalid connection user session")
+	suite.Equal("claim", claimData["session"], "Incorrect claim user session")
+	suite.Equal("claim", connection["session"], "Incorrect connection user session")
 }
 
 func (suite *ConnectSuite) TestInvalidClaim() {
@@ -77,7 +77,7 @@ func (suite *ConnectSuite) TestInvalidClaim() {
 		return
 	}
 
-	if !suite.Equal("MISSING_CLAIM", parsedBody["errorCode"], "Invalid error code") {
+	if !suite.Equal("MISSING_CLAIM", parsedBody["errorCode"], "Incorrect error code") {
 		return
 	}
 }
@@ -107,14 +107,14 @@ func (suite *ConnectSuite) TestJwtConnect() {
 	}
 
 	connections := info["connections"].([]interface{})
-	if !suite.Len(connections, 1, "Invalid number of connections") {
+	if !suite.Len(connections, 1, "Incorrect number of connections") {
 		return
 	}
 
 	connection := connections[0].(map[string]interface{})
 
-	suite.Equal("connect", connection["user"], "Invalid connection user")
-	suite.Equal("jwt", connection["session"], "Invalid connection user session")
+	suite.Equal("connect", connection["user"], "Incorrect connection user")
+	suite.Equal("jwt", connection["session"], "Incorrect connection user session")
 }
 
 func (suite *ConnectSuite) TestInvalidJwt() {

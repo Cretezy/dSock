@@ -34,11 +34,7 @@ func (suite *SendSuite) TestUserSend() {
 		Type:    "text",
 		Message: []byte("Hello world!"),
 	})
-	if !suite.NoError(err, "Error during sending") {
-		return
-	}
-
-	if !suite.Equalf(true, message["success"], "Application error during sending (%s)", message["errorCode"]) {
+	if !checkRequestError(suite.Suite, err, message, "sending") {
 		return
 	}
 
@@ -78,11 +74,7 @@ func (suite *SendSuite) TestUserSessionSend() {
 		Type:    "text",
 		Message: []byte("Hello world!"),
 	})
-	if !suite.NoError(err, "Error during sending") {
-		return
-	}
-
-	if !suite.Equalf(true, message["success"], "Application error during sending (%s)", message["errorCode"]) {
+	if !checkRequestError(suite.Suite, err, message, "sending") {
 		return
 	}
 
@@ -136,11 +128,7 @@ func (suite *SendSuite) TestConnectionSend() {
 		Type:    "binary",
 		Message: []byte{1, 2, 3, 4},
 	})
-	if !suite.NoError(err, "Error during sending") {
-		return
-	}
-
-	if !suite.Equalf(true, message["success"], "Application error during sending (%s)", message["errorCode"]) {
+	if !checkRequestError(suite.Suite, err, message, "sending") {
 		return
 	}
 
@@ -160,15 +148,7 @@ func (suite *SendSuite) TestConnectionSend() {
 
 func (suite *SendSuite) TestSendNoTarget() {
 	message, err := sendMessage(sendOptions{})
-	if !suite.NoError(err, "Error during sending") {
-		return
-	}
-
-	if !suite.Equalf(false, message["success"], "Application succeeded when expected to fail") {
-		return
-	}
-
-	if !suite.Equalf("MISSING_CONNECTION_OR_USER", message["errorCode"], "Incorrect error code") {
+	if !checkRequestNoError(suite.Suite, err, message, "MISSING_CONNECTION_OR_USER", "sending") {
 		return
 	}
 }
@@ -177,15 +157,7 @@ func (suite *SendSuite) TestSendNoType() {
 	message, err := sendMessage(sendOptions{
 		Id: "a",
 	})
-	if !suite.NoError(err, "Error during sending") {
-		return
-	}
-
-	if !suite.Equalf(false, message["success"], "Application succeeded when expected to fail") {
-		return
-	}
-
-	if !suite.Equalf("INVALID_MESSAGE_TYPE", message["errorCode"], "Incorrect error code") {
+	if !checkRequestNoError(suite.Suite, err, message, "INVALID_MESSAGE_TYPE", "sending") {
 		return
 	}
 }
