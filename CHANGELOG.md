@@ -27,6 +27,7 @@
       ```
 
 - Added tests (E2E, unit) and CI
+- Added past expiration validation (doesn't allow expiration dates in the past) during claim creation
 
 ## v0.1.2 - 2020-05-06
 

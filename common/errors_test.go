@@ -2,10 +2,19 @@ package common_test
 
 import (
 	"github.com/Cretezy/dSock/common"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
 
-func TestApiError_Format(t *testing.T) {
+type ApiErrorSuite struct {
+	suite.Suite
+}
+
+func TestApiErrorSuite(t *testing.T) {
+	suite.Run(t, new(ApiErrorSuite))
+}
+
+func (suite *ApiErrorSuite) TestFormat() {
 	apiError := common.ApiError{
 		StatusCode: 400,
 		ErrorCode:  common.ErrorInvalidAuthorization,
@@ -13,32 +22,32 @@ func TestApiError_Format(t *testing.T) {
 
 	statusCode, body := apiError.Format()
 
-	if statusCode != 400 {
-		t.Fatalf("Status code did not match (expected != action): 400 != %v", statusCode)
+	if !suite.Equal(400, statusCode, "Incorrect status code") {
+		return
 	}
 
-	if body["errorCode"] != common.ErrorInvalidAuthorization {
-		t.Fatalf("Error code did not match (expected != action): %s != %s", common.ErrorInvalidAuthorization, body["errorCode"])
+	if !suite.Equal(common.ErrorInvalidAuthorization, body["errorCode"], "Incorrect error code") {
+		return
 	}
 
-	if body["error"] != "Invalid authorization" {
-		t.Fatalf("Error message did not match (expected != action): Invalid authorization != %s", body["error"])
+	if !suite.Equal("Invalid authorization", body["error"], "Incorrect error message") {
+		return
 	}
 }
 
-func TestApiError_Format_NoStatusCode(t *testing.T) {
+func (suite *ApiErrorSuite) TestFormatNoStatusCode() {
 	apiError := common.ApiError{
 		ErrorCode: common.ErrorInvalidAuthorization,
 	}
 
 	statusCode, _ := apiError.Format()
 
-	if statusCode != 500 {
-		t.Fatalf("Status code did not match (expected != action): 500 != %v", statusCode)
+	if !suite.Equal(500, statusCode, "Incorrect status code") {
+		return
 	}
 }
 
-func TestApiError_Format_CustomErrorMessage(t *testing.T) {
+func (suite *ApiErrorSuite) TestFormatCustomErrorMessage() {
 	apiError := common.ApiError{
 		ErrorCode:          common.ErrorInvalidAuthorization,
 		CustomErrorMessage: "Custom Error",
@@ -46,27 +55,27 @@ func TestApiError_Format_CustomErrorMessage(t *testing.T) {
 
 	_, body := apiError.Format()
 
-	if body["errorCode"] != common.ErrorInvalidAuthorization {
-		t.Fatalf("Error code did not match (expected != action): %s != %s", common.ErrorInvalidAuthorization, body["errorCode"])
+	if !suite.Equal(common.ErrorInvalidAuthorization, body["errorCode"], "Incorrect error code") {
+		return
 	}
 
-	if body["error"] != "Custom Error" {
-		t.Fatalf("Error message did not match (expected != action): Custom Error != %s", body["error"])
+	if !suite.Equal("Custom Error", body["error"], "Incorrect error message") {
+		return
 	}
 }
 
-func TestApiError_Format_NoErrorMessage(t *testing.T) {
+func (suite *ApiErrorSuite) TestFormatNoErrorMessage() {
 	apiError := common.ApiError{
 		ErrorCode: "_OTHER_ERROR",
 	}
 
 	_, body := apiError.Format()
 
-	if body["errorCode"] != "_OTHER_ERROR" {
-		t.Fatalf("Error code did not match (expected != action): _OTHER_ERROR != %s", body["errorCode"])
+	if !suite.Equal("_OTHER_ERROR", body["errorCode"], "Incorrect error code") {
+		return
 	}
 
-	if body["error"] != "_OTHER_ERROR" {
-		t.Fatalf("Error message did not match (expected != action): _OTHER_ERROR != %s", body["error"])
+	if !suite.Equal("_OTHER_ERROR", body["error"], "Incorrect error message") {
+		return
 	}
 }

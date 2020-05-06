@@ -1,34 +1,30 @@
 package dsock_test
 
 import (
-	"bytes"
 	"github.com/gorilla/websocket"
-	"io/ioutil"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
 
-func TestUserSend(t *testing.T) {
+type SendSuite struct {
+	suite.Suite
+}
+
+func TestSendSuite(t *testing.T) {
+	suite.Run(t, new(SendSuite))
+}
+
+func (suite *SendSuite) TestUserSend() {
 	claim, err := createClaim(claimOptions{
 		User: "send_user",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
-	if err != nil {
-		t.Error("Error during connection ("+resp.Status+"):", err.Error())
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			t.Fatal("Body:", string(body))
-		} else {
-			t.Fatal("Could not read body")
-		}
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
 	}
 
 	defer conn.Close()
@@ -38,52 +34,40 @@ func TestUserSend(t *testing.T) {
 		Type:    "text",
 		Message: []byte("Hello world!"),
 	})
-
-	if err != nil {
-		t.Fatal("Error during sending:", err.Error())
+	if !suite.NoError(err, "Error during sending") {
+		return
 	}
 
-	if message["success"].(bool) != true {
-		t.Fatal("Application error during sending:", message["error"])
+	if !suite.Equalf(true, message["success"], "Application error during sending (%s)", message["errorCode"]) {
+		return
 	}
 
 	messageType, data, err := conn.ReadMessage()
-	if err != nil {
-		t.Fatal("Error during receiving message:", err.Error())
+	if !suite.NoError(err, "Error during receiving message") {
+		return
 	}
 
-	if messageType != websocket.TextMessage {
-		t.Fatal("Message type does not match. Got:", messageType)
+	if !suite.Equal(websocket.TextMessage, messageType, "Incorrect message type") {
+		return
 	}
 
-	if string(data) != "Hello world!" {
-		t.Fatal("Message does not match. Got:", string(data))
+	if !suite.Equal("Hello world!", string(data), "Incorrect message data") {
+		return
 	}
 }
 
-func TestUserSessionSend(t *testing.T) {
+func (suite *SendSuite) TestUserSessionSend() {
 	claim, err := createClaim(claimOptions{
 		User:    "send",
 		Session: "session",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
-	if err != nil {
-		t.Error("Error during connection ("+resp.Status+"):", err.Error())
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			t.Fatal("Body:", string(body))
-		} else {
-			t.Fatal("Could not read body")
-		}
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
 	}
 
 	defer conn.Close()
@@ -94,52 +78,40 @@ func TestUserSessionSend(t *testing.T) {
 		Type:    "text",
 		Message: []byte("Hello world!"),
 	})
-
-	if err != nil {
-		t.Fatal("Error during sending:", err.Error())
+	if !suite.NoError(err, "Error during sending") {
+		return
 	}
 
-	if message["success"].(bool) != true {
-		t.Fatal("Application error during sending:", message["error"])
+	if !suite.Equalf(true, message["success"], "Application error during sending (%s)", message["errorCode"]) {
+		return
 	}
 
 	messageType, data, err := conn.ReadMessage()
-	if err != nil {
-		t.Fatal("Error during receiving message:", err.Error())
+	if !suite.NoError(err, "Error during receiving message") {
+		return
 	}
 
-	if messageType != websocket.TextMessage {
-		t.Fatal("Message type does not match. Got:", messageType)
+	if !suite.Equal(websocket.TextMessage, messageType, "Incorrect message type") {
+		return
 	}
 
-	if string(data) != "Hello world!" {
-		t.Fatal("Message does not match. Got:", string(data))
+	if !suite.Equal("Hello world!", string(data), "Incorrect message data") {
+		return
 	}
 }
 
-func TestConnectionSend(t *testing.T) {
+func (suite *SendSuite) TestConnectionSend() {
 	claim, err := createClaim(claimOptions{
 		User:    "send",
 		Session: "connection",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
-	if err != nil {
-		t.Error("Error during connection ("+resp.Status+"):", err.Error())
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			t.Fatal("Body:", string(body))
-		} else {
-			t.Fatal("Could not read body")
-		}
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
 	}
 
 	defer conn.Close()
@@ -148,81 +120,72 @@ func TestConnectionSend(t *testing.T) {
 		User:    "send",
 		Session: "connection",
 	})
-
-	if err != nil {
-		t.Fatal("Error during getting info:", err.Error())
+	if !checkRequestError(suite.Suite, err, info, "getting info") {
+		return
 	}
 
-	if info["success"].(bool) != true {
-		t.Fatal("Application error during getting info:", info["error"])
+	infoConnections := info["connections"].([]interface{})
+	if !suite.Len(infoConnections, 1, "Invalid number of connections") {
+		return
 	}
 
-	connections := info["connections"].([]interface{})
-
-	if len(connections) != 1 {
-		t.Fatal("Invalid number of connections, expected 1:", len(connections))
-	}
-
-	id := connections[0].(map[string]interface{})["id"].(string)
+	id := infoConnections[0].(map[string]interface{})["id"].(string)
 
 	message, err := sendMessage(sendOptions{
 		Id:      id,
 		Type:    "binary",
 		Message: []byte{1, 2, 3, 4},
 	})
-
-	if err != nil {
-		t.Fatal("Error during sending:", err.Error())
+	if !suite.NoError(err, "Error during sending") {
+		return
 	}
 
-	if message["success"].(bool) != true {
-		t.Fatal("Application error during sending:", message["error"])
+	if !suite.Equalf(true, message["success"], "Application error during sending (%s)", message["errorCode"]) {
+		return
 	}
 
 	messageType, data, err := conn.ReadMessage()
-	if err != nil {
-		t.Fatal("Error during receiving message:", err.Error())
+	if !suite.NoError(err, "Error during receiving message") {
+		return
 	}
 
-	if messageType != websocket.BinaryMessage {
-		t.Fatal("Message type does not match. Got:", messageType)
+	if !suite.Equal(websocket.BinaryMessage, messageType, "Incorrect message type") {
+		return
 	}
 
-	if bytes.Compare(data, []byte{1, 2, 3, 4}) != 0 {
-		t.Fatal("Message does not match. Got:", string(data))
+	if !suite.Equal([]byte{1, 2, 3, 4}, data, "Incorrect message data") {
+		return
 	}
 }
 
-func TestSendNoTarget(t *testing.T) {
+func (suite *SendSuite) TestSendNoTarget() {
 	message, err := sendMessage(sendOptions{})
-
-	if err != nil {
-		t.Fatal("Error during sending message:", err.Error())
+	if !suite.NoError(err, "Error during sending") {
+		return
 	}
 
-	if message["success"].(bool) != false {
-		t.Fatal("Application succeeded when it should have failed during sending message:", message["error"])
+	if !suite.Equalf(false, message["success"], "Application succeeded when expected to fail") {
+		return
 	}
 
-	if message["errorCode"] != "MISSING_CONNECTION_OR_USER" {
-		t.Fatal("Error code did not match expected (MISSING_CONNECTION_OR_USER):", message["error"])
+	if !suite.Equalf("MISSING_CONNECTION_OR_USER", message["errorCode"], "Incorrect error code") {
+		return
 	}
 }
 
-func TestSendNoType(t *testing.T) {
+func (suite *SendSuite) TestSendNoType() {
 	message, err := sendMessage(sendOptions{
 		Id: "a",
 	})
-
-	if err != nil {
-		t.Fatal("Error during sending message:", err.Error())
+	if !suite.NoError(err, "Error during sending") {
+		return
 	}
 
-	if message["success"].(bool) != false {
-		t.Fatal("Application succeeded when it should have failed during sending message:", message["error"])
+	if !suite.Equalf(false, message["success"], "Application succeeded when expected to fail") {
+		return
 	}
 
-	if message["errorCode"] != "INVALID_MESSAGE_TYPE" {
-		t.Fatal("Error code did not match expected (INVALID_MESSAGE_TYPE):", message["error"])
+	if !suite.Equalf("INVALID_MESSAGE_TYPE", message["errorCode"], "Incorrect error code") {
+		return
 	}
 }

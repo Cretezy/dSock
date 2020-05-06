@@ -46,6 +46,15 @@ func createClaimHandler(c *gin.Context) {
 		}
 
 		expirationTime = time.Unix(int64(expiration), 0)
+
+		if expirationTime.Before(time.Now()) {
+			apiError := common.ApiError{
+				ErrorCode:  common.ErrorInvalidExpiration,
+				StatusCode: 400,
+			}
+			apiError.Send(c)
+			return
+		}
 	} else if c.Query("duration") != "" {
 		duration, err := strconv.Atoi(c.Query("duration"))
 

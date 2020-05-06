@@ -2,33 +2,30 @@ package dsock_test
 
 import (
 	"github.com/gorilla/websocket"
-	"io/ioutil"
+	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
 )
 
-func TestUserDisconnect(t *testing.T) {
+type DisconnectSuite struct {
+	suite.Suite
+}
+
+func TestDisconnectSuite(t *testing.T) {
+	suite.Run(t, new(DisconnectSuite))
+}
+
+func (suite *DisconnectSuite) TestUserDisconnect() {
 	claim, err := createClaim(claimOptions{
 		User: "disconnect_user",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
-	if err != nil {
-		t.Error("Error during connection ("+resp.Status+"):", err.Error())
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			t.Fatal("Body:", string(body))
-		} else {
-			t.Fatal("Could not read body")
-		}
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
 	}
 
 	defer conn.Close()
@@ -36,52 +33,36 @@ func TestUserDisconnect(t *testing.T) {
 	disconnectResponse, err := disconnect(disconnectOptions{
 		User: "disconnect_user",
 	})
-
-	if err != nil {
-		t.Fatal("Error during disconnection:", err.Error())
-	}
-
-	if disconnectResponse["success"].(bool) != true {
-		t.Fatal("Application error during disconnection:", disconnectResponse["error"])
+	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
+		return
 	}
 
 	_, _, err = conn.ReadMessage()
-	if err == nil {
-		t.Fatal("Did not receive error when was expecting")
+	if !suite.Error(err, "Didn't get error when was expecting") {
+		return
 	}
 
 	if closeErr, ok := err.(*websocket.CloseError); ok {
-		if closeErr.Code != websocket.CloseNormalClosure {
-			t.Fatalf("Close type did not match (expected != action): %v != %v", websocket.CloseNormalClosure, closeErr.Code)
+		if !suite.Equal(websocket.CloseNormalClosure, closeErr.Code, "Incorrect close type") {
+			return
 		}
 	} else {
-		t.Fatal("Error type does not match. Got:", err)
+		suite.Failf("Incorrect error type: %s", err.Error())
 	}
 }
 
-func TestSessionDisconnect(t *testing.T) {
+func (suite *DisconnectSuite) TestSessionDisconnect() {
 	claim, err := createClaim(claimOptions{
 		User:    "disconnect",
 		Session: "session",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
-	if err != nil {
-		t.Error("Error during connection ("+resp.Status+"):", err.Error())
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			t.Fatal("Body:", string(body))
-		} else {
-			t.Fatal("Could not read body")
-		}
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
 	}
 
 	defer conn.Close()
@@ -90,52 +71,36 @@ func TestSessionDisconnect(t *testing.T) {
 		User:    "disconnect",
 		Session: "session",
 	})
-
-	if err != nil {
-		t.Fatal("Error during disconnection:", err.Error())
-	}
-
-	if disconnectResponse["success"].(bool) != true {
-		t.Fatal("Application error during disconnection:", disconnectResponse["error"])
+	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
+		return
 	}
 
 	_, _, err = conn.ReadMessage()
-	if err == nil {
-		t.Fatal("Did not receive error when was expecting")
+	if !suite.Error(err, "Didn't get error when was expecting") {
+		return
 	}
 
 	if closeErr, ok := err.(*websocket.CloseError); ok {
-		if closeErr.Code != websocket.CloseNormalClosure {
-			t.Fatalf("Close type did not match (expected != action): %v != %v", websocket.CloseNormalClosure, closeErr.Code)
+		if !suite.Equal(websocket.CloseNormalClosure, closeErr.Code, "Incorrect close type") {
+			return
 		}
 	} else {
-		t.Fatal("Error type does not match. Got:", err)
+		suite.Failf("Incorrect error type: %s", err.Error())
 	}
 }
 
-func TestConnectionDisconnect(t *testing.T) {
+func (suite *DisconnectSuite) TestConnectionDisconnect() {
 	claim, err := createClaim(claimOptions{
 		User:    "disconnect",
 		Session: "connection",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
-	if err != nil {
-		t.Error("Error during connection ("+resp.Status+"):", err.Error())
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			t.Fatal("Body:", string(body))
-		} else {
-			t.Fatal("Could not read body")
-		}
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
 	}
 
 	defer conn.Close()
@@ -144,72 +109,50 @@ func TestConnectionDisconnect(t *testing.T) {
 		User:    "disconnect",
 		Session: "connection",
 	})
-
-	if err != nil {
-		t.Fatal("Error during getting info:", err.Error())
+	if !checkRequestError(suite.Suite, err, info, "getting info") {
+		return
 	}
 
-	if info["success"].(bool) != true {
-		t.Fatal("Application error during getting info:", info["error"])
+	infoConnections := info["connections"].([]interface{})
+	if !suite.Len(infoConnections, 1, "Invalid number of connections") {
+		return
 	}
 
-	connections := info["connections"].([]interface{})
-
-	if len(connections) != 1 {
-		t.Fatal("Invalid number of connections, expected 1:", len(connections))
-	}
-
-	id := connections[0].(map[string]interface{})["id"].(string)
+	id := infoConnections[0].(map[string]interface{})["id"].(string)
 
 	disconnectResponse, err := disconnect(disconnectOptions{
 		Id: id,
 	})
-
-	if err != nil {
-		t.Fatal("Error during disconnection:", err.Error())
-	}
-
-	if disconnectResponse["success"].(bool) != true {
-		t.Fatal("Application error during disconnection:", disconnectResponse["error"])
+	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
+		return
 	}
 
 	_, _, err = conn.ReadMessage()
-	if err == nil {
-		t.Fatal("Did not receive error when was expecting")
+	if !suite.Error(err, "Didn't get error when was expecting") {
+		return
 	}
 
 	if closeErr, ok := err.(*websocket.CloseError); ok {
-		if closeErr.Code != websocket.CloseNormalClosure {
-			t.Fatalf("Close type did not match (expected != action): %v != %v", websocket.CloseNormalClosure, closeErr.Code)
+		if !suite.Equal(websocket.CloseNormalClosure, closeErr.Code, "Incorrect close type") {
+			return
 		}
 	} else {
-		t.Fatal("Error type does not match. Got:", err)
+		suite.Failf("Incorrect error type: %s", err.Error())
 	}
 }
 
-func TestNoSessionDisconnect(t *testing.T) {
+func (suite *DisconnectSuite) TestNoSessionDisconnect() {
 	claim, err := createClaim(claimOptions{
 		User:    "disconnect",
 		Session: "no_session",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
-	if err != nil {
-		t.Error("Error during connection ("+resp.Status+"):", err.Error())
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			t.Fatal("Body:", string(body))
-		} else {
-			t.Fatal("Could not read body")
-		}
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
 	}
 
 	defer conn.Close()
@@ -224,144 +167,106 @@ func TestNoSessionDisconnect(t *testing.T) {
 		User:    "disconnect",
 		Session: "no_session_bad",
 	})
-
-	if err != nil {
-		t.Fatal("Error during disconnection:", err.Error())
-	}
-
-	if disconnectResponse["success"].(bool) != true {
-		t.Fatal("Application error during disconnection:", disconnectResponse["error"])
+	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
+		return
 	}
 
 	// Wait a bit to see if connection was closed
 	time.Sleep(time.Millisecond * 100)
 
-	if websocketErr != nil {
-		t.Fatalf("Got websocket error when wasn't expected: %s", websocketErr)
+	if !suite.NoError(websocketErr, "Got Websocket error (disconnect) when wasn't expecting") {
+		return
 	}
 }
 
-func TestDisconnectExpireClaim(t *testing.T) {
+func (suite *DisconnectSuite) TestDisconnectExpireClaim() {
 	claim, err := createClaim(claimOptions{
 		User:    "disconnect",
 		Session: "expire_claim",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	infoBefore, err := getInfo(infoOptions{
 		User:    "disconnect",
 		Session: "expire_claim",
 	})
-
-	if err != nil {
-		t.Fatal("Error during getting info:", err.Error())
-	}
-
-	if infoBefore["success"].(bool) != true {
-		t.Fatal("Application error during getting info:", infoBefore["error"])
+	if !checkRequestError(suite.Suite, err, infoBefore, "getting before info") {
+		return
 	}
 
 	claimsBefore := infoBefore["claims"].([]interface{})
 
-	if len(claimsBefore) != 1 {
-		t.Fatalf("Invalid number of claims (expected != actual): 1 != %v", len(claimsBefore))
+	if !suite.Len(claimsBefore, 1, "Incorrect number of claims before") {
+		return
 	}
 
 	disconnectResponse, err := disconnect(disconnectOptions{
 		User:    "disconnect",
 		Session: "expire_claim",
 	})
-
-	if err != nil {
-		t.Fatal("Error during disconnection:", err.Error())
-	}
-
-	if disconnectResponse["success"].(bool) != true {
-		t.Fatal("Application error during disconnection:", disconnectResponse["error"])
+	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
+		return
 	}
 
 	infoAfter, err := getInfo(infoOptions{
 		User:    "disconnect",
 		Session: "expire_claim",
 	})
-
-	if infoAfter["success"].(bool) != true {
-		t.Fatal("Application error during getting info:", infoAfter["error"])
+	if !checkRequestError(suite.Suite, err, infoBefore, "getting after info") {
+		return
 	}
 
 	claimsAfter := infoAfter["claims"].([]interface{})
 
-	if len(claimsAfter) != 0 {
-		t.Fatalf("Invalid number of claims (expected != actual): 0 != %v", len(claimsAfter))
+	if !suite.Len(claimsAfter, 0, "Incorrect number of claims after") {
+		return
 	}
 }
 
-func TestDisconnectKeepClaim(t *testing.T) {
+func (suite *DisconnectSuite) TestDisconnectKeepClaim() {
 	claim, err := createClaim(claimOptions{
 		User:    "disconnect",
 		Session: "keep_claim",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
-	}
-
 	infoBefore, err := getInfo(infoOptions{
 		User:    "disconnect",
 		Session: "keep_claim",
 	})
-
-	if err != nil {
-		t.Fatal("Error during getting info:", err.Error())
-	}
-
-	if infoBefore["success"].(bool) != true {
-		t.Fatal("Application error during getting info:", infoBefore["error"])
+	if !checkRequestError(suite.Suite, err, infoBefore, "getting info") {
+		return
 	}
 
 	claimsBefore := infoBefore["claims"].([]interface{})
 
-	if len(claimsBefore) != 1 {
-		t.Fatalf("Invalid number of claims (expected != actual): 1 != %v", len(claimsBefore))
+	if !suite.Len(claimsBefore, 1, "Incorrect number of claims before") {
+		return
 	}
 
 	disconnectResponse, err := disconnect(disconnectOptions{
 		User:       "disconnect",
-		Session:    "keep_claim",
+		Session:    "keep_claim_invalid",
 		KeepClaims: true,
 	})
-
-	if err != nil {
-		t.Fatal("Error during disconnection:", err.Error())
-	}
-
-	if disconnectResponse["success"].(bool) != true {
-		t.Fatal("Application error during disconnection:", disconnectResponse["error"])
+	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
+		return
 	}
 
 	infoAfter, err := getInfo(infoOptions{
 		User:    "disconnect",
 		Session: "keep_claim",
 	})
-
-	if infoAfter["success"].(bool) != true {
-		t.Fatal("Application error during getting info:", infoAfter["error"])
+	if !checkRequestError(suite.Suite, err, infoAfter, "getting after info") {
+		return
 	}
 
 	claimsAfter := infoAfter["claims"].([]interface{})
 
-	if len(claimsAfter) != 1 {
-		t.Fatalf("Invalid number of claims (expected != actual): 1 != %v", len(claimsAfter))
+	if !suite.Len(claimsAfter, 1, "Incorrect number of claims after") {
+		return
 	}
 }

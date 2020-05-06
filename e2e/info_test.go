@@ -2,83 +2,115 @@ package dsock_test
 
 import (
 	"github.com/gorilla/websocket"
-	"io/ioutil"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
 
-func TestInfoClaim(t *testing.T) {
+type InfoSuite struct {
+	suite.Suite
+}
+
+func TestInfoSuite(t *testing.T) {
+	suite.Run(t, new(InfoSuite))
+}
+
+func (suite *InfoSuite) TestInfoClaim() {
 	claim, err := createClaim(claimOptions{
-		User:    "info",
-		Session: "claim",
+		User:       "info",
+		Session:    "claim",
+		Expiration: 2147485545,
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	info, err := getInfo(infoOptions{
 		User:    "info",
 		Session: "claim",
 	})
-
-	if err != nil {
-		t.Fatal("Error during getting info:", err.Error())
-	}
-
-	if info["success"].(bool) != true {
-		t.Fatal("Application error during getting info:", info["error"])
+	if !checkRequestError(suite.Suite, err, info, "getting info") {
+		return
 	}
 
 	infoClaims := info["claims"].([]interface{})
 
-	if len(infoClaims) != 1 {
-		t.Fatal("Invalid number of claims, expected 1:", len(infoClaims))
+	if !suite.Len(infoClaims, 1, "Invalid number of claims") {
+		return
 	}
 
 	claimData := claim["claim"].(map[string]interface{})
 
 	infoClaimData := infoClaims[0].(map[string]interface{})
 
-	if claimData["id"] != infoClaimData["id"] {
-		t.Fatal("Info claim ID doesn't match (expected != actual):", claimData["id"], "!=", infoClaimData["id"])
+	if !suite.Equal(claimData["id"], infoClaimData["id"], "Info claim ID doesn't match claim") {
+		return
 	}
 
-	if claimData["user"] != infoClaimData["user"] {
-		t.Fatal("Info claim user doesn't match (expected != actual):", claimData["user"], "!=", infoClaimData["user"])
+	if !suite.Equal("info", claimData["user"], "Invalid claim user") {
+		return
+	}
+	if !suite.Equal("info", infoClaimData["user"], "Invalid info claim user") {
+		return
 	}
 
-	if claimData["session"] != infoClaimData["session"] {
-		t.Fatal("Info claim session doesn't match (expected != actual):", claimData["session"], "!=", infoClaimData["session"])
+	if !suite.Equal("claim", claimData["session"], "Invalid claim user session") {
+		return
+	}
+	if !suite.Equal("claim", infoClaimData["session"], "Invalid info claim user session") {
+		return
+	}
+
+	// Has to do some weird casting
+	if !suite.Equal(2147485545, int(infoClaimData["expiration"].(float64)), "Info claim expiration doesn't match") {
+		return
 	}
 }
 
-func TestInfoConnection(t *testing.T) {
+func (suite *InfoSuite) TestInfoClaimInvalidExpiration() {
+	claim, err := createClaim(claimOptions{
+		User:       "info",
+		Session:    "invalid_expiration",
+		Expiration: 1,
+	})
+	if !checkRequestNoError(suite.Suite, err, claim, "INVALID_EXPIRATION", "claim creation") {
+		return
+	}
+}
+
+func (suite *InfoSuite) TestInfoClaimNegativeExpiration() {
+	claim, err := createClaim(claimOptions{
+		User:       "info",
+		Session:    "negative_expiration",
+		Expiration: -1,
+	})
+	if !checkRequestNoError(suite.Suite, err, claim, "NEGATIVE_EXPIRATION", "claim creation") {
+		return
+	}
+}
+
+func (suite *InfoSuite) TestInfoClaimNegativeDuration() {
+	claim, err := createClaim(claimOptions{
+		User:     "info",
+		Session:  "negative_duration",
+		Duration: -1,
+	})
+	if !checkRequestNoError(suite.Suite, err, claim, "NEGATIVE_DURATION", "claim creation") {
+		return
+	}
+}
+
+func (suite *InfoSuite) TestInfoConnection() {
 	claim, err := createClaim(claimOptions{
 		User:    "info",
 		Session: "connection",
 	})
-
-	if err != nil {
-		t.Fatal("Error during claim creation:", err.Error())
-	}
-
-	if claim["success"].(bool) != true {
-		t.Fatal("Application error during claim creation:", claim["error"])
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
 	}
 
 	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
-	if err != nil {
-		t.Error("Error during connection ("+resp.Status+"):", err.Error())
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			t.Fatal("Body:", string(body))
-		} else {
-			t.Fatal("Could not read body")
-		}
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
 	}
 
 	defer conn.Close()
@@ -87,73 +119,48 @@ func TestInfoConnection(t *testing.T) {
 		User:    "info",
 		Session: "connection",
 	})
-
-	if err != nil {
-		t.Fatal("Error during getting info:", err.Error())
-	}
-
-	if info["success"].(bool) != true {
-		t.Fatal("Application error during getting info:", info["error"])
+	if !checkRequestError(suite.Suite, err, info, "getting info") {
+		return
 	}
 
 	infoConnections := info["connections"].([]interface{})
-
-	if len(infoConnections) != 1 {
-		t.Fatal("Invalid number of connections, expected 1:", len(infoConnections))
+	if !suite.Len(infoConnections, 1, "Invalid number of connections") {
+		return
 	}
 
 	claimData := claim["claim"].(map[string]interface{})
-
 	infoConnectionData := infoConnections[0].(map[string]interface{})
 
-	if claimData["user"] != infoConnectionData["user"] {
-		t.Fatal("Info claim user doesn't match (expected != actual):", claimData["user"], "!=", infoConnectionData["user"])
-	}
+	suite.Equal("info", claimData["user"], "Invalid claim user")
+	suite.Equal("info", infoConnectionData["user"], "Invalid connection user")
 
-	if claimData["session"] != infoConnectionData["session"] {
-		t.Fatal("Info claim session doesn't match (expected != actual):", claimData["session"], "!=", infoConnectionData["session"])
-	}
+	suite.Equal("connection", claimData["session"], "Invalid claim user session")
+	suite.Equal("connection", infoConnectionData["session"], "Invalid connection user session")
 }
 
-func TestInfoMissing(t *testing.T) {
+func (suite *InfoSuite) TestInfoMissing() {
 	info, err := getInfo(infoOptions{
 		User:    "info",
 		Session: "missing",
 	})
-
-	if err != nil {
-		t.Fatal("Error during getting info:", err.Error())
-	}
-
-	if info["success"].(bool) != true {
-		t.Fatal("Application error during getting info:", info["error"])
+	if !checkRequestError(suite.Suite, err, info, "getting info") {
+		return
 	}
 
 	infoClaims := info["claims"].([]interface{})
-
-	if len(infoClaims) != 0 {
-		t.Fatal("Invalid number of claims, expected 0:", len(infoClaims))
+	if !suite.Len(infoClaims, 0, "Invalid number of claims") {
+		return
 	}
 
 	infoConnections := info["connections"].([]interface{})
-
-	if len(infoConnections) != 0 {
-		t.Fatal("Invalid number of connections, expected 0:", len(infoConnections))
+	if !suite.Len(infoConnections, 0, "Invalid number of connections") {
+		return
 	}
 }
 
-func TestInfoNoTarget(t *testing.T) {
+func (suite *InfoSuite) TestInfoNoTarget() {
 	info, err := getInfo(infoOptions{})
-
-	if err != nil {
-		t.Fatal("Error during getting info:", err.Error())
-	}
-
-	if info["success"].(bool) != false {
-		t.Fatal("Application succeeded when it should have failed during getting info:", info["error"])
-	}
-
-	if info["errorCode"] != "MISSING_CONNECTION_OR_USER" {
-		t.Fatal("Error code did not match expected (MISSING_CONNECTION_OR_USER):", info["error"])
+	if !checkRequestNoError(suite.Suite, err, info, "MISSING_CONNECTION_OR_USER", "getting info") {
+		return
 	}
 }

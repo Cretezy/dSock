@@ -418,6 +418,8 @@ You can build the Docker images using `scripts/build-docker`. This will create t
 
 dSock has multiple types of tests to ensure stability and maximum coverage.
 
+You can run all tests by running `scripts/run-tests`. You can also run individual test suites (see below)
+
 #### End-to-end (E2E)
 
 You can run the E2E tests by running `scripts/run-e2e`. The E2E tests are located inside the `e2e` directory. 

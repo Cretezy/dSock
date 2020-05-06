@@ -3,33 +3,39 @@ package common_test
 
 import (
 	"github.com/Cretezy/dSock/common"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
 
-func TestRemoveString(t *testing.T) {
-	removed := common.RemoveString([]string{"a", "b", "a"}, "a")
-	if len(removed) != 2 || removed[0] != "b" || removed[1] != "a" {
-		t.Fatal()
-	}
+type UtilsSuite struct {
+	suite.Suite
 }
 
-func TestUniqueString(t *testing.T) {
-	unique := common.UniqueString([]string{"a", "b", "a"})
-	if len(unique) != 2 || unique[0] != "a" || unique[1] != "b" {
-		t.Fatal()
-	}
+func TestUtilsSuite(t *testing.T) {
+	suite.Run(t, new(UtilsSuite))
 }
 
-func TestRemoveEmpty(t *testing.T) {
-	removed := common.RemoveEmpty([]string{"a", "b", ""})
-	if len(removed) != 2 || removed[0] != "a" || removed[1] != "b" {
-		t.Fatal()
-	}
+func (suite *UtilsSuite) TestRemoveString() {
+	suite.Equal(
+		[]string{"b", "a"},
+		common.RemoveString([]string{"a", "b", "a"}, "a"),
+	)
 }
 
-func TestRandomString(t *testing.T) {
-	random := common.RandomString(8)
-	if len(random) != 8 {
-		t.Fatal()
-	}
+func (suite *UtilsSuite) TestUniqueString() {
+	suite.Equal(
+		[]string{"a", "b"},
+		common.UniqueString([]string{"a", "b", "a"}),
+	)
+}
+
+func (suite *UtilsSuite) TestRemoveEmpty() {
+	suite.Equal(
+		[]string{"a", "b"},
+		common.RemoveEmpty([]string{"a", "b", ""}),
+	)
+}
+
+func (suite *UtilsSuite) TestRandomString() {
+	suite.Len(common.RandomString(8), 8)
 }
