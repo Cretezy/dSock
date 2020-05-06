@@ -7,6 +7,35 @@ on:
   pull_request:
 
 jobs:
+  build-binaries:
+    name: Build Binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Task
+        uses: Arduino/actions/setup-taskfile@master
+      - name: Install Go
+        uses: actions/setup-go@v2
+      - name: Build Binaries
+        run: task build:binaries
+      - name: Upload Build Artifacts (binaries)
+        uses: actions/upload-artifact@v1
+        with:
+          path: build
+          name: Binaries
+
+  build-docker:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Task
+        uses: Arduino/actions/setup-taskfile@master
+      - name: Build Docker Images
+        run: task build:docker
+
   e2e:
     name: E2E
     runs-on: ubuntu-latest
@@ -17,6 +46,7 @@ jobs:
         uses: Arduino/actions/setup-taskfile@master
       - name: Test
         run: task tests:e2e
+
   unit:
     name: Unit
     runs-on: ubuntu-latest
@@ -27,19 +57,3 @@ jobs:
         uses: Arduino/actions/setup-taskfile@master
       - name: Test
         run: task tests:unit
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Install Task
-        uses: Arduino/actions/setup-taskfile@master
-      - name: Install Go
-        uses: actions/setup-go@v2
-      - name: build
-        run: task build
-      - name: Upload build artifacts (binaries)
-        uses: actions/upload-artifact@v1
-        with:
-          path: build

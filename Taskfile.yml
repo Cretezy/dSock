@@ -33,6 +33,11 @@ tasks:
   build:binaries:
     cmds:
       - rm -rf build && mkdir build
+      - task: build:binaries:api
+      - task: build:binaries:worker
+
+  build:binaries:api:
+    cmds:
       - echo "Building API - Linux"
       - cd api && GOOS=linux GOARCH=386 go build -o ../build/api-linux-386 -ldflags "-s -w"
       - cd api && GOOS=linux GOARCH=amd64 go build -o ../build/api-linux-amd64 -ldflags "-s -w"
@@ -41,6 +46,9 @@ tasks:
       - cd api && GOOS=windows GOARCH=amd64 go build -o ../build/api-windows-amd64 -ldflags "-s -w"
       - echo "Building API - macOS"
       - cd api && GOOS=darwin GOARCH=amd64 go build -o ../build/api-darwin-amd64 -ldflags "-s -w"
+
+  build:binaries:worker:
+    cmds:
       - echo "Building worker - Linux"
       - cd worker && GOOS=linux GOARCH=386 go build -o ../build/worker-linux-386 -ldflags "-s -w"
       - cd worker && GOOS=linux GOARCH=amd64 go build -o ../build/worker-linux-amd64 -ldflags "-s -w"
