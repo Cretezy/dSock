@@ -1,4 +1,4 @@
-## Unreleased
+## v0.2.0 - 2020-05-06
 
 - **Breaking**
   - Changed response format for creating claims
