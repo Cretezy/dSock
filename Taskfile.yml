@@ -1,0 +1,73 @@
+version: '2'
+
+silent: true
+
+tasks:
+  tests:
+    cmds:
+      # Run sequentially
+      - task: tests:unit
+      - task: tests:e2e
+
+  tests:unit:
+    cmds:
+      - go test ./common
+      - go test ./api
+      - go test ./worker
+
+  tests:e2e:
+    cmds:
+      - docker-compose down
+      - docker-compose -f docker-compose.yml -f docker-compose.e2e.yml run e2e
+
+  build:protos:
+    cmds:
+      - protoc --proto_path=protos --go_opt=paths=source_relative --go_out=common/protos protos/*
+
+  build:
+    cmds:
+      # Run sequentially
+      - task: build:binaries
+      - task: build:docker
+
+  build:binaries:
+    cmds:
+      - rm -rf build && mkdir build
+      - task: build:binaries:api
+      - task: build:binaries:worker
+
+  build:binaries:api:
+    cmds:
+      - echo "Building API - Linux"
+      - cd api && GOOS=linux GOARCH=386 go build -o ../build/api-linux-386 -ldflags "-s -w"
+      - cd api && GOOS=linux GOARCH=amd64 go build -o ../build/api-linux-amd64 -ldflags "-s -w"
+      - echo "Building API - Windows"
+      - cd api && GOOS=windows GOARCH=386 go build -o ../build/api-windows-386 -ldflags "-s -w"
+      - cd api && GOOS=windows GOARCH=amd64 go build -o ../build/api-windows-amd64 -ldflags "-s -w"
+      - echo "Building API - macOS"
+      - cd api && GOOS=darwin GOARCH=amd64 go build -o ../build/api-darwin-amd64 -ldflags "-s -w"
+
+  build:binaries:worker:
+    cmds:
+      - echo "Building worker - Linux"
+      - cd worker && GOOS=linux GOARCH=386 go build -o ../build/worker-linux-386 -ldflags "-s -w"
+      - cd worker && GOOS=linux GOARCH=amd64 go build -o ../build/worker-linux-amd64 -ldflags "-s -w"
+      - echo "Building worker - Windows"
+      - cd worker && GOOS=windows GOARCH=386 go build -o ../build/worker-windows-386 -ldflags "-s -w"
+      - cd worker && GOOS=windows GOARCH=amd64 go build -o ../build/worker-windows-amd64 -ldflags "-s -w"
+      - echo "Building worker - macOS"
+      - cd worker && GOOS=darwin GOARCH=amd64 go build -o ../build/worker-darwin-amd64 -ldflags "-s -w"
+
+  build:docker:
+    cmds:
+      - docker build -t dsock-api -f api/Dockerfile .
+      - docker build -t dsock-worker -f worker/Dockerfile .
+
+  push:docker:
+    cmds:
+      - echo "Tagging images as {{.TAG}}..."
+      - docker tag dsock-api dsock/api:{{.TAG}}
+      - docker tag dsock-worker dsock/worker:{{.TAG}}
+      - echo "Pushing images..."
+      - docker push dsock/api:{{.TAG}}
+      - docker push dsock/worker:{{.TAG}}

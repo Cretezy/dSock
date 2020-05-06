@@ -1,7 +1,0 @@
-#!/bin/bash
-
-set -e
-
-cd "$(dirname "$0")"/..
-
-protoc --proto_path=protos --go_opt=paths=source_relative --go_out=common/protos protos/*

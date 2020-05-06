@@ -12,7 +12,7 @@ The sessions is the name of the test. If no session is set, add the name in the 
 
 ## Usage
 
-Run `script/run-e2e` (file in root of project, can be ran from anywhere) to run the E2E tests.
+Run `task tests:e2e` to run the E2E tests.
 
 Tests are ran inside Docker Compose, using an additional configuration (`docker-compose.e2e.yml`).
 This adds the `e2e` service on top of the normal development services.

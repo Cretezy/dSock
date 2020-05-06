@@ -400,6 +400,7 @@ If you need TLS, you can either add a TLS-terminating load-balancer, or a revers
 
 - Install [Go](https://golang.org)
 - Install [Docker](https://www.docker.com) and [Docker Compose](https://docs.docker.com/compose/)
+- Install [Task](https://taskfile.dev)
 - Pull the [dSock repository](https://github.com/Cretzy/dSock)
 - Run `docker-compose up`
 - Develop! API is available at `:3000`, and worker at `:3001`. Configs are in their respective folders
@@ -408,25 +409,25 @@ If you need TLS, you can either add a TLS-terminating load-balancer, or a revers
 
 If making changes to the Protocol Buffer definitions (under `protos`), make sure you have the [`protoc`](https://github.com/protocolbuffers/protobuf) compiler and [`protoc-gen-go`](https://developers.google.com/protocol-buffers/docs/reference/go-generated).
 
-Once changes are done to the definitions, run the `scripts/build-protos` file to generate the associated Go code.
+Once changes are done to the definitions, run `task build:protos` to generate the associated Go code.
 
 ### Docker
 
-You can build the Docker images using `scripts/build-docker`. This will create the `dsock-worker` and `dsock-api` images.
+You can build the Docker images by running `task build:docker`. This will create the `dsock-worker` and `dsock-api` images.
 
 ### Tests
 
 dSock has multiple types of tests to ensure stability and maximum coverage.
 
-You can run all tests by running `scripts/run-tests`. You can also run individual test suites (see below)
+You can run all tests by running `task tests`. You can also run individual test suites (see below)
 
 #### End-to-end (E2E)
 
-You can run the E2E tests by running `scripts/run-e2e`. The E2E tests are located inside the `e2e` directory. 
+You can run the E2E tests by running `task tests:e2e`. The E2E tests are located inside the `e2e` directory. 
 
 #### Unit
 
-You can run the unit tests by running `scripts/run-unit`. The units tests are located inside the `common`/`api`/`worker` directories. 
+You can run the unit tests by running `task tests:unit`. The units tests are located inside the `common`/`api`/`worker` directories. 
 
 ### Contributing
 
