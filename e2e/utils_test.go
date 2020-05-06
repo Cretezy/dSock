@@ -166,3 +166,54 @@ func getInfo(options infoOptions) (map[string]interface{}, error) {
 
 	return result, nil
 }
+
+type disconnectOptions struct {
+	Id         string
+	User       string
+	Session    string
+	KeepClaims bool
+}
+
+func disconnect(options disconnectOptions) (map[string]interface{}, error) {
+	params := url.Values{}
+
+	params.Add("user", options.User)
+
+	if options.Session != "" {
+		params.Add("session", options.Session)
+	}
+	if options.Id != "" {
+		params.Add("id", options.Id)
+	}
+	if options.KeepClaims {
+		params.Add("keepClaims", "true")
+	}
+
+	req, err := http.NewRequest("POST", "http://api/disconnect?"+params.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
