@@ -11,24 +11,27 @@ import (
 )
 
 func connectHandler(c *gin.Context) {
-	authentication := authenticate(c)
-	if authentication == nil {
+	// Authenticate client and get user/session
+	authentication, apiError := authenticate(c)
+	if apiError != nil {
+		apiError.Send(c)
 		return
 	}
 
+	// Upgrade to a WebSocket connection
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Println(err)
+		log.Println("Could not upgrade:", err)
 		return
 	}
 
+	// Generate connection ID (random UUIDv4, can't be guessed)
 	connId := uuid.New().String()
 
-	// TODO: Add authentication
-
+	// Channel that will be used to send messages to the client
 	sender := make(chan *protos.Message)
 
-	// Add to cache
+	// Add to memory cache
 	connection := SockConnection{
 		Conn:         conn,
 		Id:           connId,
@@ -52,12 +55,15 @@ func connectHandler(c *gin.Context) {
 		"workerId": workerId,
 		"lastPing": time.Now().Format(time.RFC3339),
 	}
-	redisClient.SAdd("user:"+authentication.User, connId)
 	if authentication.Session != "" {
 		redisConnection["session"] = authentication.Session
-		redisClient.SAdd("user-session:"+authentication.User+"-"+authentication.Session, connId)
 	}
 	redisClient.HSet("conn:"+connId, redisConnection)
+
+	redisClient.SAdd("user:"+authentication.User, connId)
+	if authentication.Session != "" {
+		redisClient.SAdd("user-session:"+authentication.User+"-"+authentication.Session, connId)
+	}
 
 	// Send ping every minute
 	go func() {
@@ -72,12 +78,14 @@ func connectHandler(c *gin.Context) {
 		}
 	}()
 
+	// Message receiving loop (from client)
 	go func() {
 	ReceiveLoop:
 		for {
 			messageType, _, err := conn.ReadMessage()
 
 			if err != nil {
+				// Disconnect on error
 				if connection.CloseChannel != nil {
 					connection.CloseChannel <- struct{}{}
 				}
@@ -101,6 +109,7 @@ func connectHandler(c *gin.Context) {
 		}
 	}()
 
+	// Message sending loop (to client, from sending channel)
 SendLoop:
 	for {
 		select {

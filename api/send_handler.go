@@ -4,43 +4,49 @@ import (
 	"github.com/Cretezy/dSock/common"
 	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-gonic/gin"
-	"google.golang.org/protobuf/proto"
 	"io/ioutil"
-	"sync"
 )
 
 func sendHandler(c *gin.Context) {
-	user := c.Query("user")
 	connId := c.Query("id")
+	user := c.Query("user")
+	session := c.Query("session")
 
-	workerIds, ok := resolveWorkers(c)
-
-	if !ok {
+	// Get all worker IDs that the target is connected to
+	workerIds, apiError := resolveWorkers(common.ResolveOptions{
+		Connection: connId,
+		User:       user,
+		Session:    session,
+	})
+	if apiError != nil {
+		apiError.Send(c)
 		return
 	}
 
 	parsedMessageType := ParseMessageType(c.Query("type"))
 
 	if parsedMessageType == -1 {
-		c.AbortWithStatusJSON(400, map[string]interface{}{
-			"success":   false,
-			"error":     "Invalid message type, must be text or binary",
-			"errorCode": common.ErrorInvalidMessageType,
-		})
+		apiError := common.ApiError{
+			StatusCode: 400,
+			ErrorCode:  common.ErrorInvalidMessageType,
+		}
+		apiError.Send(c)
 		return
 	}
 
+	// Read full body (message data)
 	body, err := ioutil.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.AbortWithStatusJSON(500, map[string]interface{}{
-			"success":   false,
-			"error":     "Error reading message",
-			"errorCode": common.ErrorReadingMessage,
-		})
+		apiError := common.ApiError{
+			StatusCode: 500,
+			ErrorCode:  common.ErrorReadingMessage,
+		}
+		apiError.Send(c)
 		return
 	}
 
+	// Prepare message for worker
 	message := &protos.Message{
 		Body:       body,
 		User:       user,
@@ -49,38 +55,19 @@ func sendHandler(c *gin.Context) {
 		Type:       parsedMessageType,
 	}
 
-	rawMessage, err := proto.Marshal(message)
-
-	if err != nil {
-		c.AbortWithStatusJSON(500, map[string]interface{}{
-			"success":   false,
-			"error":     "Error marshalling message",
-			"errorCode": common.ErrorMarshallingMessage,
-		})
+	// Send to all workers
+	apiError = sendToWorkers(workerIds, message)
+	if apiError != nil {
+		apiError.Send(c)
 		return
 	}
-
-	var workersWaitGroup sync.WaitGroup
-
-	workersWaitGroup.Add(len(workerIds))
-
-	for _, workerId := range workerIds {
-		workerId := workerId
-		go func() {
-			defer workersWaitGroup.Done()
-
-			// Set: type, message, user, session
-			redisClient.Publish(workerId, rawMessage)
-		}()
-	}
-
-	workersWaitGroup.Wait()
 
 	c.AbortWithStatusJSON(200, map[string]interface{}{
 		"success": true,
 	})
 }
 
+/// Parse message type, allowing for WebSocket frame type ID
 func ParseMessageType(messageType string) protos.Message_MessageType {
 	switch messageType {
 	case "text":

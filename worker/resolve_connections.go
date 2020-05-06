@@ -1,12 +1,8 @@
 package main
 
-type ResolveOptions struct {
-	Connection string
-	User       string
-	Session    string
-}
+import "github.com/Cretezy/dSock/common"
 
-func resolveConnections(options ResolveOptions) ([]SockConnection, bool) {
+func resolveConnections(options common.ResolveOptions) ([]SockConnection, bool) {
 	if options.Connection != "" {
 		sockConnection, exists := connections[options.Connection]
 
@@ -36,6 +32,7 @@ func resolveConnections(options ResolveOptions) ([]SockConnection, bool) {
 
 		return senders, true
 	} else {
+		// No target
 		return []SockConnection{}, false
 	}
 }
