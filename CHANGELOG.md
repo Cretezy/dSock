@@ -33,6 +33,7 @@
 - Improved code documentation, refactored to make it cleaner
 - Improved API response code (refactored error handling)
 - Small performance improvements for some hot-paths
+- Actually bump version in code
 
 ## v0.1.1 - 2020-05-05
 
