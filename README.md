@@ -422,6 +422,10 @@ dSock has multiple types of tests to ensure stability and maximum coverage.
 
 You can run the E2E tests by running `scripts/run-e2e`. The E2E tests are located inside the `e2e` directory. 
 
+#### Unit
+
+You can run the unit tests by running `scripts/run-unit`. The units tests are located inside the `common`/`api`/`worker` directories. 
+
 ### Contributing
 
 [Pull requests](https://github.com/Cretezy/dSock/pulls) are encouraged!
