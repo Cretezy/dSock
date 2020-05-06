@@ -65,7 +65,7 @@ func (apiError *ApiError) Error() string {
 	return apiError.ErrorCode + ": " + apiError.InternalError.Error()
 }
 
-func (apiError *ApiError) Send(c *gin.Context) {
+func (apiError *ApiError) Format() (int, gin.H) {
 	statusCode := apiError.StatusCode
 	if statusCode == 0 {
 		statusCode = 500
@@ -82,9 +82,13 @@ func (apiError *ApiError) Send(c *gin.Context) {
 		errorMessage = apiError.ErrorCode
 	}
 
-	c.AbortWithStatusJSON(statusCode, gin.H{
+	return statusCode, gin.H{
 		"success":   false,
 		"errorCode": apiError.ErrorCode,
 		"error":     errorMessage,
-	})
+	}
+}
+
+func (apiError *ApiError) Send(c *gin.Context) {
+	c.AbortWithStatusJSON(apiError.Format())
 }
