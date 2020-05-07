@@ -4,12 +4,14 @@ import (
 	"github.com/Cretezy/dSock/common"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"strings"
 	"time"
 )
 
 type Authentication struct {
-	User    string
-	Session string
+	User     string
+	Session  string
+	Channels []string
 }
 
 func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
@@ -68,10 +70,14 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 		if session != "" {
 			redisClient.SRem("claim-user-session:"+user+"-"+session, claim)
 		}
+		for _, channel := range strings.Split(claimData.Val()["channels"], ",") {
+			redisClient.SRem("claim-channel:"+channel, claim)
+		}
 
 		return &Authentication{
-			User:    user,
-			Session: session,
+			User:     user,
+			Session:  session,
+			Channels: strings.Split(claimData.Val()["channels"], ","),
 		}, nil
 	} else if jwtToken := c.Query("jwt"); jwtToken != "" && options.Jwt.JwtSecret != "" {
 		// Valid JWT (only enabled if `jwt_secret` is set)
@@ -92,6 +98,9 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 		return &Authentication{
 			User:    claims.Subject,
 			Session: claims.Session,
+			Channels: common.UniqueString(common.RemoveEmpty(
+				claims.Channels,
+			)),
 		}, nil
 	} else {
 		return nil, &common.ApiError{

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -17,6 +18,10 @@ func connectHandler(c *gin.Context) {
 		apiError.Send(c)
 		return
 	}
+
+	authentication.Channels = append(authentication.Channels, options.DefaultChannels...)
+
+	log.Printf("Channels: %v", authentication.Channels)
 
 	// Upgrade to a WebSocket connection
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -49,6 +54,17 @@ func connectHandler(c *gin.Context) {
 		users[authentication.User] = []string{connId}
 	}
 
+	for _, channel := range authentication.Channels {
+		channelEntry, channelExists := channels[channel]
+		if channelExists {
+			channels[channel] = append(channelEntry, connId)
+		} else {
+			channels[channel] = []string{connId}
+		}
+
+		redisClient.SAdd("channel:"+channel, connId)
+	}
+
 	// Add user/session to Redis
 	redisConnection := map[string]interface{}{
 		"user":     authentication.User,
@@ -57,6 +73,9 @@ func connectHandler(c *gin.Context) {
 	}
 	if authentication.Session != "" {
 		redisConnection["session"] = authentication.Session
+	}
+	if len(authentication.Channels) != 0 {
+		redisConnection["channels"] = strings.Join(authentication.Channels, ",")
 	}
 	redisClient.HSet("conn:"+connId, redisConnection)
 
@@ -132,6 +151,12 @@ SendLoop:
 
 			delete(connections, connId)
 			users[authentication.User] = common.RemoveString(users[authentication.User], connId)
+
+			for _, channel := range authentication.Channels {
+				channels[channel] = common.RemoveString(channels[channel], connId)
+
+				redisClient.SRem("channel:"+channel, connId)
+			}
 
 			break SendLoop
 		}

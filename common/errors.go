@@ -10,6 +10,7 @@ var (
 	ErrorNegativeDuration        = "NEGATIVE_DURATION"
 	ErrorGettingConnection       = "ERROR_GETTING_CONNECTION"
 	ErrorGettingUser             = "ERROR_GETTING_USER"
+	ErrorGettingChannel          = "ERROR_GETTING_CHANNEL"
 	ErrorMissingConnectionOrUser = "MISSING_CONNECTION_OR_USER"
 	ErrorInvalidAuthorization    = "INVALID_AUTHORIZATION"
 	ErrorMissingAuthentication   = "MISSING_AUTHENTICATION"
@@ -32,6 +33,7 @@ var ErrorMessages = map[string]string{
 	ErrorNegativeDuration:        "Can not use 0 or negative duration",
 	ErrorGettingConnection:       "Error getting connection",
 	ErrorGettingUser:             "Error getting user",
+	ErrorGettingChannel:          "Error getting channel",
 	ErrorMissingConnectionOrUser: "Connection ID or user ID is missing",
 	ErrorInvalidAuthorization:    "Invalid authorization",
 	ErrorMissingAuthentication:   "Did not provide an authentication method",

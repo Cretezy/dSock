@@ -11,6 +11,7 @@ func send(message *protos.Message) {
 		Connection: message.Connection,
 		User:       message.User,
 		Session:    message.Session,
+		Channel:    message.Channel,
 	})
 
 	if !ok {

@@ -15,4 +15,5 @@ message Message {
     string connection = 3;
     string user = 4;
     string session = 5;
+    string channel = 6;
 }

@@ -4,11 +4,15 @@ import (
 	"github.com/Cretezy/dSock/common"
 	"github.com/gin-gonic/gin"
 	"strconv"
+	"strings"
 	"time"
 )
 
 func createClaimHandler(c *gin.Context) {
 	user := c.Query("user")
+	channels := common.UniqueString(common.RemoveEmpty(
+		strings.Split(c.Query("channels"), ","),
+	))
 
 	if user == "" {
 		apiError := common.ApiError{
@@ -120,6 +124,10 @@ func createClaimHandler(c *gin.Context) {
 		claim["session"] = session
 	}
 
+	if len(channels) != 0 {
+		claim["channels"] = strings.Join(channels, ",")
+	}
+
 	claimKey := "claim:" + id
 	redisClient.HSet(claimKey, claim)
 	redisClient.ExpireAt(claimKey, expirationTime)
@@ -132,6 +140,10 @@ func createClaimHandler(c *gin.Context) {
 		userSessionKey := "claim-user-session:" + user + "-" + session
 		redisClient.SAdd(userSessionKey, id, 0)
 	}
+	for _, channel := range channels {
+		channelKey := "claim-channel:" + channel
+		redisClient.SAdd(channelKey, id, 0)
+	}
 
 	claimResponse := gin.H{
 		"id":         id,
@@ -141,6 +153,10 @@ func createClaimHandler(c *gin.Context) {
 
 	if session != "" {
 		claimResponse["session"] = session
+	}
+
+	if len(channels) != 0 {
+		claimResponse["channels"] = channels
 	}
 
 	c.AbortWithStatusJSON(200, map[string]interface{}{

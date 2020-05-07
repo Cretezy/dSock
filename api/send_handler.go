@@ -11,12 +11,14 @@ func sendHandler(c *gin.Context) {
 	connId := c.Query("id")
 	user := c.Query("user")
 	session := c.Query("session")
+	channel := c.Query("channel")
 
 	// Get all worker IDs that the target is connected to
 	workerIds, apiError := resolveWorkers(common.ResolveOptions{
 		Connection: connId,
 		User:       user,
 		Session:    session,
+		Channel:    channel,
 	})
 	if apiError != nil {
 		apiError.Send(c)
@@ -48,11 +50,12 @@ func sendHandler(c *gin.Context) {
 
 	// Prepare message for worker
 	message := &protos.Message{
-		Body:       body,
-		User:       user,
-		Connection: connId,
-		Session:    c.Query("session"),
 		Type:       parsedMessageType,
+		Body:       body,
+		Connection: connId,
+		User:       user,
+		Session:    c.Query("session"),
+		Channel:    channel,
 	}
 
 	// Send to all workers

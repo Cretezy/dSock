@@ -5,6 +5,7 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/spf13/viper"
 	"os"
+	"strings"
 )
 
 type JwtOptions struct {
@@ -20,6 +21,8 @@ type DSockOptions struct {
 	Token string
 	/// JWT parsing/verifying options
 	Jwt JwtOptions
+	/// Default channels to subscribe on join
+	DefaultChannels []string
 }
 
 func SetupConfig() {
@@ -35,6 +38,7 @@ func SetupConfig() {
 	viper.SetDefault("redis_password", "")
 	viper.SetDefault("redis_db", 0)
 	viper.SetDefault("address", ":6241")
+	viper.SetDefault("default_channels", "")
 	viper.SetDefault("token", "")
 	viper.SetDefault("jwt_secret", "")
 	viper.SetDefault("debug", false)
@@ -79,5 +83,8 @@ func GetOptions() DSockOptions {
 		Jwt: JwtOptions{
 			JwtSecret: viper.GetString("jwt_secret"),
 		},
+		DefaultChannels: UniqueString(RemoveEmpty(
+			strings.Split(viper.GetString("default_channels"), ","),
+		)),
 	}
 }

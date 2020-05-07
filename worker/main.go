@@ -30,6 +30,7 @@ var workerId = uuid.New().String()
 
 var connections = make(map[string]SockConnection)
 var users = make(map[string][]string)
+var channels = make(map[string][]string)
 
 var redisClient *redis.Client
 var options common.DSockOptions
