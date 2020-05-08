@@ -1,4 +1,4 @@
-## Unreleased
+## v0.3.0 - 2020-05-08
 
 - **Breaking**
     - Change `MISSING_CONNECTION_OR_USER` to `MISSING_TARGET` (and changed message)
