@@ -167,7 +167,7 @@ func (suite *InfoSuite) TestInfoMissing() {
 
 func (suite *InfoSuite) TestInfoNoTarget() {
 	info, err := getInfo(infoOptions{})
-	if !checkRequestNoError(suite.Suite, err, info, "MISSING_CONNECTION_OR_USER", "getting info") {
+	if !checkRequestNoError(suite.Suite, err, info, "MISSING_TARGET", "getting info") {
 		return
 	}
 }

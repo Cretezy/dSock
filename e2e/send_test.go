@@ -148,7 +148,7 @@ func (suite *SendSuite) TestConnectionSend() {
 
 func (suite *SendSuite) TestSendNoTarget() {
 	message, err := sendMessage(sendOptions{})
-	if !checkRequestNoError(suite.Suite, err, message, "MISSING_CONNECTION_OR_USER", "sending") {
+	if !checkRequestNoError(suite.Suite, err, message, "MISSING_TARGET", "sending") {
 		return
 	}
 }
