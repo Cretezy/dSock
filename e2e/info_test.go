@@ -228,3 +228,47 @@ func (suite *InfoSuite) TestInfoChannel() {
 		return
 	}
 }
+
+func (suite *InfoSuite) TestInfoChannelClaim() {
+	claim, err := createClaim(claimOptions{
+		User:     "info",
+		Session:  "channel_claim",
+		Channels: []string{"info_channel_claim"},
+	})
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
+	}
+
+	info, err := getInfo(infoOptions{
+		target: target{
+			Channel: "info_channel_claim",
+		},
+	})
+	if !checkRequestError(suite.Suite, err, info, "getting info") {
+		return
+	}
+
+	infoClaims := info["claims"].([]interface{})
+	if !suite.Len(infoClaims, 1, "Incorrect number of claims") {
+		return
+	}
+
+	claimData := claim["claim"].(map[string]interface{})
+	infoClaimData := infoClaims[0].(map[string]interface{})
+
+	if !suite.Equal("info", claimData["user"], "Incorrect claim user") {
+		return
+	}
+	if !suite.Equal("info", infoClaimData["user"], "Incorrect info claim user") {
+		return
+	}
+
+	if !suite.Equal([]string{"info_channel_claim"}, interfaceToStringSlice(claimData["channels"]), "Incorrect claim channels") {
+		return
+	}
+
+	// Includes default_channels in info
+	if !suite.Equal([]string{"info_channel_claim"}, interfaceToStringSlice(infoClaimData["channels"]), "Incorrect info claim channels") {
+		return
+	}
+}

@@ -301,7 +301,7 @@ The API endpoint is `POST /disconnect`, with the following query params:
   - `id` (string UUID): The specific internal connection ID
   - `channel` (string): The channel to target
 - `token` (required, string): Authorization token for API set in config. Can also be a `Authorization` Bearer token
-- `keepClaims` (optional, boolean): If to keep active claims for the target. By default, dSock will remove claims for the target to prevent race conditions
+- `keepClaims` (optional, boolean): When set to `true`, keeps active claims for the target. By default, dSock will remove claims for the target to prevent race conditions
 
 #### Examples
 
@@ -374,12 +374,15 @@ The following errors can happen during getting info:
 
 You can subscribe/unsubscribe clients to a channel using `POST /channel/subscribe/$CHANNEL` or `POST /channel/subscribe/$CHANNEL`.
 
+This will subscribe the connections and claims (optional) for the target provided.
+
 The follow query parameters are accepted:
 - Targeting (one is required):
   - `user` (string): The user ID to query
     - `session` (optional, string, when `user` is set): The specific session(s) to query from the user
   - `id` (string UUID): The specific internal connection ID
   - `channel` (string): The channel to query
+- `ignoreClaims` (optional, boolean): When set to `true`, doesn't add channel to claims for target. By default, dSock will add the channel to the target claims (for when the client does join)
 - `token` (required, string): Authorization token for API set in config. Can also be a `Authorization` Bearer token
 
 #### Examples
@@ -387,13 +390,13 @@ The follow query parameters are accepted:
 Subscribe a user (`1`) to a channel (`a`):
 
 ```text
-POST /channe/subscribe/a?token=abcxyz&user=1
+POST /channel/subscribe/a?token=abcxyz&user=1
 ```
 
 Unsubscribe all clients in a channel from a channel (`a`):
 
 ```text
-POST /channe/unsubscribe/a?token=abcxyz&channel=a
+POST /channel/unsubscribe/a?token=abcxyz&channel=a
 ```
 
 #### Errors
@@ -444,6 +447,20 @@ When sending a message, the API resolves of all of the workers that hold connect
 
 API to worker messages are encoded using [Protocol Buffer](https://developers.google.com/protocol-buffers) for efficiency;
 they are fast to encode/decode, and binary messages to not need to be encoded as strings during communication.
+
+### Channels
+
+Channels are assosiated to claims/JWTs (before a client connects) and connections.
+
+When (un)subscribing a target to a channel, it looks up all of the target's claims and adds the claim (if `ignoreClaim` is not set),
+and broadcasts to workers with connections that are connected through the `$workerId:channel` Redis channel.
+
+The worker then resolves all connections for the target and adds them to the channel.
+
+Channels are found under `channel:$channel` and contain the list of connection IDs which are subscribed.
+
+Claim channels are found under `claim-channel:$channel` and contain the list of claim IDs which will become subscribed,
+and is also stored under `channels` in the claim.
 
 ## FAQ
 

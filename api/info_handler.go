@@ -35,6 +35,7 @@ func formatClaim(id string, claim map[string]string) gin.H {
 		"id":         id,
 		"expiration": expirationTime.Unix(),
 		"user":       claim["user"],
+		"channels":   strings.Split(claim["channels"], ","),
 	}
 
 	if claim["session"] != "" {
@@ -54,6 +55,7 @@ func infoHandler(c *gin.Context) {
 		Connection: connId,
 		User:       user,
 		Session:    session,
+		Channel:    channel,
 	})
 	if apiError != nil {
 		apiError.Send(c)

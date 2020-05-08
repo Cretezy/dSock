@@ -151,13 +151,18 @@ func disconnect(options disconnectOptions) (map[string]interface{}, error) {
 
 type channelOptions struct {
 	target
-	Channel string
+	Channel      string
+	IgnoreClaims bool
 }
 
 func subscribeChannel(options channelOptions) (map[string]interface{}, error) {
 	params := url.Values{}
 
 	addTargetToParams(options.target, params)
+
+	if options.IgnoreClaims {
+		params.Set("ignoreClaims", "true")
+	}
 
 	return doApiRequest("POST", "/channel/subscribe/"+options.Channel, params, nil)
 }
@@ -166,6 +171,10 @@ func unsubscribeChannel(options channelOptions) (map[string]interface{}, error) 
 	params := url.Values{}
 
 	addTargetToParams(options.target, params)
+
+	if options.IgnoreClaims {
+		params.Set("ignoreClaims", "true")
+	}
 
 	return doApiRequest("POST", "/channel/unsubscribe/"+options.Channel, params, nil)
 }

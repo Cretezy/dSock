@@ -1,7 +1,7 @@
 ## Unreleased
 
 - **Breaking**
-    - Change `MISSING_CONNECTION_OR_USER` to `MISSING_TARGET`
+    - Change `MISSING_CONNECTION_OR_USER` to `MISSING_TARGET` (and changed message)
 - Added channels:
     - Added `channel` target option to sending, getting info, disconnect
     - Added `channels` JWT claim (array of strings)
