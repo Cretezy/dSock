@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/Cretezy/dSock/common"
 	"github.com/gin-gonic/gin"
+	"strings"
 	"sync"
 	"time"
 )
@@ -16,6 +17,7 @@ func formatConnection(id string, connection map[string]string) gin.H {
 		"worker":   connection["workerId"],
 		"lastPing": lastPingTime.Unix(),
 		"user":     connection["user"],
+		"channels": strings.Split(connection["channels"], ","),
 	}
 
 	if connection["session"] != "" {
@@ -298,7 +300,7 @@ func infoHandler(c *gin.Context) {
 	} else {
 		apiError := common.ApiError{
 			StatusCode: 400,
-			ErrorCode:  common.ErrorMissingConnectionOrUser,
+			ErrorCode:  common.ErrorTarget,
 		}
 		apiError.Send(c)
 	}

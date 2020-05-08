@@ -137,7 +137,7 @@ Having an invalid or missing token will result in the `INVALID_AUTHORIZATION` er
 
 Most errors starting with `ERROR_` are downstream errors, usually from Redis. Check if your Redis connection is valid!
 
-When targeting, the precedence order is: `id`, `channel`, `user`
+When targeting, the precedence order is: `id`, `channel`, `user`.
 
 ### Client authentication
 
@@ -204,7 +204,7 @@ Payload options:
 
 - `sub` (required, string): The user ID
 - `sid` (optional, string): The session ID (scoped per user)
-- `channels` (optional, comma-delimited string): Channels to subscribe on join (merged with `default_channels`)
+- `channels` (optional, array of string): Channels to subscribe on join (merged with `default_channels`)
 - Time-related (one is required):
   - [`iat`](https://tools.ietf.org/html/rfc7519#section-4.1.6) (integer, in seconds from epoch): Time the JWT is issued (expires 1 minute after this time)
   - [`exp`](https://tools.ietf.org/html/rfc7519#section-4.1.4) (integer, in seconds from epoch): Expiration time for the JWT, takes precedence over `iat`
@@ -281,7 +281,7 @@ The following errors can happen during sending a message:
 - `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
 - `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
 - `ERROR_GETTING_CHANNEL`: If `channel` is set and could not fetch channel (Redis error)
-- `MISSING_CONNECTION_OR_USER`: If `id` or `user` is not provided
+- `MISSING_TARGET`: If target is not provider
 - `INVALID_MESSAGE_TYPE`: If the `type` is invalid
 - `ERROR_READING_MESSAGE`: If an error occurred during reading the request body
 - `ERROR_MARSHALLING_MESSAGE`: If an error occurred during preparing to send the message to the workers (shouldn't happen)
@@ -319,7 +319,7 @@ The following errors can happen during disconnection:
 - `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
 - `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
 - `ERROR_GETTING_CHANNEL`: If `channel` is set and could not fetch channel (Redis error)
-- `MISSING_CONNECTION_OR_USER`: If `id` or `user` is not provided
+- `MISSING_TARGET`: If target is not provider
 - `ERROR_GETTING_CLAIM`: If an error occurred during fetching the claim(s) (Redis error)
 - `ERROR_MARSHALLING_MESSAGE`: If an error occurred during preparing to send the message to the workers (shouldn't happen)
 
@@ -344,7 +344,7 @@ The returned object contains:
   - `lastPing`: Last ping from client in seconds from epoch
   - `user`: The connection's user
   - `session` (optional): The connection's session
-  - `channels` (optional): The connection's subscribe channels
+  - `channels`: The connection's subscribe channels
 - `claims` (array of objects): List of non-expired claims for the target:
   - `id`: Claim ID (what a client would connect with)
   - `expiration`: Claim expiration in seconds from epoch
@@ -368,7 +368,44 @@ The following errors can happen during getting info:
 - `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
 - `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
 - `ERROR_GETTING_CHANNEL`: If `channel` is set and could not fetch channel (Redis error)
-- `MISSING_CONNECTION_OR_USER`: If `id` or `user` is not provided
+- `MISSING_TARGET`: If target is not provider
+
+### Channels
+
+You can subscribe/unsubscribe clients to a channel using `POST /channel/subscribe/$CHANNEL` or `POST /channel/subscribe/$CHANNEL`.
+
+The follow query parameters are accepted:
+- Targeting (one is required):
+  - `user` (string): The user ID to query
+    - `session` (optional, string, when `user` is set): The specific session(s) to query from the user
+  - `id` (string UUID): The specific internal connection ID
+  - `channel` (string): The channel to query
+- `token` (required, string): Authorization token for API set in config. Can also be a `Authorization` Bearer token
+
+#### Examples
+
+Subscribe a user (`1`) to a channel (`a`):
+
+```text
+POST /channe/subscribe/a?token=abcxyz&user=1
+```
+
+Unsubscribe all clients in a channel from a channel (`a`):
+
+```text
+POST /channe/unsubscribe/a?token=abcxyz&channel=a
+```
+
+#### Errors
+
+The following errors can happen during channel subscription/unsubscription:
+
+- `INVALID_AUTHORIZATION`: Invalid authentication (token). See errors section under usage
+- `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
+- `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
+- `ERROR_GETTING_CHANNEL`: If `channel` is set and could not fetch channel (Redis error)
+- `MISSING_TARGET`: If target is not provider
+- `ERROR_MARSHALLING_MESSAGE`: If an error occurred during preparing to send the message to the workers (shouldn't happen)
 
 ## Internals
 

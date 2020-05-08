@@ -57,11 +57,13 @@ func disconnectHandler(c *gin.Context) {
 
 	// Prepare message for worker
 	message := &protos.Message{
-		Type:       protos.Message_DISCONNECT,
-		Connection: connId,
-		User:       user,
-		Session:    session,
-		Channel:    channel,
+		Type: protos.Message_DISCONNECT,
+		Target: &protos.Target{
+			Connection: connId,
+			User:       user,
+			Session:    session,
+			Channel:    channel,
+		},
 	}
 
 	rawMessage, err := proto.Marshal(message)

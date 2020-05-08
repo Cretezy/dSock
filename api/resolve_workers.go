@@ -168,7 +168,7 @@ func resolveWorkers(options common.ResolveOptions) ([]string, *common.ApiError) 
 		// No targeting options where provided
 		return nil, &common.ApiError{
 			StatusCode: 400,
-			ErrorCode:  common.ErrorMissingConnectionOrUser,
+			ErrorCode:  common.ErrorTarget,
 		}
 	}
 

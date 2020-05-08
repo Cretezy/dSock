@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-func sendToWorkers(workerIds []string, message proto.Message) *common.ApiError {
+func sendToWorkers(workerChannels []string, message proto.Message) *common.ApiError {
 	rawMessage, err := proto.Marshal(message)
 
 	if err != nil {
@@ -17,9 +17,9 @@ func sendToWorkers(workerIds []string, message proto.Message) *common.ApiError {
 	}
 
 	var workersWaitGroup sync.WaitGroup
-	workersWaitGroup.Add(len(workerIds))
+	workersWaitGroup.Add(len(workerChannels))
 
-	for _, workerId := range workerIds {
+	for _, workerId := range workerChannels {
 		workerId := workerId
 		go func() {
 			defer workersWaitGroup.Done()

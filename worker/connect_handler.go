@@ -21,8 +21,6 @@ func connectHandler(c *gin.Context) {
 
 	authentication.Channels = append(authentication.Channels, options.DefaultChannels...)
 
-	log.Printf("Channels: %v", authentication.Channels)
-
 	// Upgrade to a WebSocket connection
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -33,7 +31,7 @@ func connectHandler(c *gin.Context) {
 	// Generate connection ID (random UUIDv4, can't be guessed)
 	connId := uuid.New().String()
 
-	// Channel that will be used to send messages to the client
+	// Channel that will be used to handleSend messages to the client
 	sender := make(chan *protos.Message)
 
 	// Add to memory cache
@@ -44,17 +42,18 @@ func connectHandler(c *gin.Context) {
 		Session:      authentication.Session,
 		Sender:       sender,
 		CloseChannel: make(chan struct{}),
+		Channels:     authentication.Channels,
 	}
-	connections[connId] = connection
+	connections[connId] = &connection
 
-	usersEntry, userExists := users[authentication.User]
+	usersEntry, userExists := users[connection.User]
 	if userExists {
-		users[authentication.User] = append(usersEntry, connId)
+		users[connection.User] = append(usersEntry, connId)
 	} else {
-		users[authentication.User] = []string{connId}
+		users[connection.User] = []string{connId}
 	}
 
-	for _, channel := range authentication.Channels {
+	for _, channel := range connection.Channels {
 		channelEntry, channelExists := channels[channel]
 		if channelExists {
 			channels[channel] = append(channelEntry, connId)
@@ -67,21 +66,22 @@ func connectHandler(c *gin.Context) {
 
 	// Add user/session to Redis
 	redisConnection := map[string]interface{}{
-		"user":     authentication.User,
+		"user":     connection.User,
 		"workerId": workerId,
 		"lastPing": time.Now().Format(time.RFC3339),
+		"channels": strings.Join(connection.Channels, ","),
 	}
-	if authentication.Session != "" {
-		redisConnection["session"] = authentication.Session
+	if connection.Session != "" {
+		redisConnection["session"] = connection.Session
 	}
-	if len(authentication.Channels) != 0 {
-		redisConnection["channels"] = strings.Join(authentication.Channels, ",")
+	if len(connection.Channels) != 0 {
+		redisConnection["channels"] = strings.Join(connection.Channels, ",")
 	}
 	redisClient.HSet("conn:"+connId, redisConnection)
 
-	redisClient.SAdd("user:"+authentication.User, connId)
-	if authentication.Session != "" {
-		redisClient.SAdd("user-session:"+authentication.User+"-"+authentication.Session, connId)
+	redisClient.SAdd("user:"+connection.User, connId)
+	if connection.Session != "" {
+		redisClient.SAdd("user-session:"+connection.User+"-"+connection.Session, connId)
 	}
 
 	// Send ping every minute
@@ -144,15 +144,15 @@ SendLoop:
 			_ = conn.Close()
 
 			redisClient.Del("conn:" + connId)
-			redisClient.SRem("user:"+authentication.User, connId)
-			if authentication.Session != "" {
-				redisClient.SRem("user-session:"+authentication.User+"-"+authentication.Session, connId)
+			redisClient.SRem("user:"+connection.User, connId)
+			if connection.Session != "" {
+				redisClient.SRem("user-session:"+connection.User+"-"+connection.Session, connId)
 			}
 
 			delete(connections, connId)
-			users[authentication.User] = common.RemoveString(users[authentication.User], connId)
+			users[connection.User] = common.RemoveString(users[connection.User], connId)
 
-			for _, channel := range authentication.Channels {
+			for _, channel := range connection.Channels {
 				channels[channel] = common.RemoveString(channels[channel], connId)
 
 				redisClient.SRem("channel:"+channel, connId)
@@ -173,4 +173,5 @@ type SockConnection struct {
 	Sender chan *protos.Message
 	/// Channel to close the connect. nil when connection is closed/closing
 	CloseChannel chan struct{}
+	Channels     []string
 }

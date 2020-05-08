@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-redis/redis/v7"
 	"github.com/spf13/viper"
+	"log"
 	"os"
 	"strings"
 )
@@ -47,7 +48,7 @@ func SetupConfig() {
 
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			println("No config found, writing new config.")
+			log.Println("No config found, writing new config.")
 
 			err = viper.SafeWriteConfigAs("config.toml")
 
