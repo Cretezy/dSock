@@ -77,7 +77,7 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 		return &Authentication{
 			User:     user,
 			Session:  session,
-			Channels: strings.Split(claimData.Val()["channels"], ","),
+			Channels: common.RemoveEmpty(strings.Split(claimData.Val()["channels"], ",")),
 		}, nil
 	} else if jwtToken := c.Query("jwt"); jwtToken != "" && options.Jwt.JwtSecret != "" {
 		// Valid JWT (only enabled if `jwt_secret` is set)

@@ -33,8 +33,10 @@ func (suite *ConnectSuite) TestClaimConnect() {
 	defer conn.Close()
 
 	info, err := getInfo(infoOptions{
-		User:    "connect",
-		Session: "claim",
+		target: target{
+			User:    "connect",
+			Session: "claim",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, info, "getting info") {
 		return
@@ -99,8 +101,10 @@ func (suite *ConnectSuite) TestJwtConnect() {
 	defer conn.Close()
 
 	info, err := getInfo(infoOptions{
-		User:    "connect",
-		Session: "jwt",
+		target: target{
+			User:    "connect",
+			Session: "jwt",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, info, "getting info") {
 		return
@@ -148,6 +152,52 @@ func (suite *ConnectSuite) TestInvalidJwt() {
 	}
 
 	if !suite.Equal("INVALID_JWT", parsedBody["errorCode"], "Incorrect error code") {
+		return
+	}
+}
+
+func (suite *ConnectSuite) TestJwtConnectChannel() {
+	// Hard coded JWT with max expiry:
+	// {
+	//  "sub": "connect",
+	//  "sid": "jwt_channel",
+	//  "exp": 2147485546,
+	//  "channels": ["connect_jwt"]
+	//}
+	jwt := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjb25uZWN0Iiwic2lkIjoiand0X2NoYW5uZWwiLCJleHAiOjIxNDc0ODU1NDYsImNoYW5uZWxzIjpbImNvbm5lY3Rfand0Il19.LdKHWk1W6DLMR02T0g1lGfhPdyyKqDJHqvUL3YQ9tLQ"
+
+	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?jwt="+jwt, nil)
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
+	}
+
+	defer conn.Close()
+
+	info, err := getInfo(infoOptions{
+		target: target{
+			Channel: "connect_jwt",
+		},
+	})
+	if !checkRequestError(suite.Suite, err, info, "getting info") {
+		return
+	}
+
+	connections := info["connections"].([]interface{})
+	if !suite.Len(connections, 1, "Incorrect number of connections") {
+		return
+	}
+
+	connection := connections[0].(map[string]interface{})
+
+	if !suite.Equal("connect", connection["user"], "Incorrect connection user") {
+		return
+	}
+	if !suite.Equal("jwt_channel", connection["session"], "Incorrect connection user session") {
+		return
+	}
+
+	// Includes default_channels in info
+	if !suite.Equal([]string{"connect_jwt", "global"}, interfaceToStringSlice(connection["channels"]), "Incorrect connection channels") {
 		return
 	}
 }

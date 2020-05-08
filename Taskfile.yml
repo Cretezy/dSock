@@ -3,6 +3,14 @@ version: '2'
 silent: true
 
 tasks:
+  start:
+    cmds:
+      - docker-compose up
+
+  format:
+    cmds:
+      - gofmt -s -w .
+
   tests:
     cmds:
       # Run sequentially

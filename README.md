@@ -165,7 +165,7 @@ The returned body will contain the following keys:
     - `expiration`: The expiration in seconds from epoch
     - `user`: The user for the claim
     - `session` (if session is provided): The user session for the claim
-    - `channels` (if channels is provided): The channels to subscribe on join (excludes defaults)
+    - `channels`: The channels to subscribe on join (excludes defaults)
 
 A claim is single-use, so once a client connects, it will instantly expire.
 
@@ -344,7 +344,7 @@ The returned object contains:
   - `lastPing`: Last ping from client in seconds from epoch
   - `user`: The connection's user
   - `session` (optional): The connection's session
-  - `channels`: The connection's subscribe channels
+  - `channels`: The connection's subscribe channels (includes `default_channels`)
 - `claims` (array of objects): List of non-expired claims for the target:
   - `id`: Claim ID (what a client would connect with)
   - `expiration`: Claim expiration in seconds from epoch

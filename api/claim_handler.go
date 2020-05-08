@@ -149,6 +149,7 @@ func createClaimHandler(c *gin.Context) {
 		"id":         id,
 		"expiration": expirationTime.Unix(),
 		"user":       user,
+		"channels":   channels,
 	}
 
 	if session != "" {
