@@ -25,8 +25,10 @@ func (suite *InfoSuite) TestInfoClaim() {
 	}
 
 	info, err := getInfo(infoOptions{
-		User:    "info",
-		Session: "claim",
+		target: target{
+			User:    "info",
+			Session: "claim",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, info, "getting info") {
 		return
@@ -115,8 +117,10 @@ func (suite *InfoSuite) TestInfoConnection() {
 	defer conn.Close()
 
 	info, err := getInfo(infoOptions{
-		User:    "info",
-		Session: "connection",
+		target: target{
+			User:    "info",
+			Session: "connection",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, info, "getting info") {
 		return
@@ -147,8 +151,10 @@ func (suite *InfoSuite) TestInfoConnection() {
 
 func (suite *InfoSuite) TestInfoMissing() {
 	info, err := getInfo(infoOptions{
-		User:    "info",
-		Session: "missing",
+		target: target{
+			User:    "info",
+			Session: "missing",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, info, "getting info") {
 		return
@@ -167,7 +173,102 @@ func (suite *InfoSuite) TestInfoMissing() {
 
 func (suite *InfoSuite) TestInfoNoTarget() {
 	info, err := getInfo(infoOptions{})
-	if !checkRequestNoError(suite.Suite, err, info, "MISSING_CONNECTION_OR_USER", "getting info") {
+	if !checkRequestNoError(suite.Suite, err, info, "MISSING_TARGET", "getting info") {
+		return
+	}
+}
+
+func (suite *InfoSuite) TestInfoChannel() {
+	claim, err := createClaim(claimOptions{
+		User:     "info",
+		Session:  "channel",
+		Channels: []string{"info_channel"},
+	})
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
+	}
+
+	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
+	}
+
+	defer conn.Close()
+
+	info, err := getInfo(infoOptions{
+		target: target{
+			Channel: "info_channel",
+		},
+	})
+	if !checkRequestError(suite.Suite, err, info, "getting info") {
+		return
+	}
+
+	infoConnections := info["connections"].([]interface{})
+	if !suite.Len(infoConnections, 1, "Incorrect number of connections") {
+		return
+	}
+
+	claimData := claim["claim"].(map[string]interface{})
+	infoConnectionData := infoConnections[0].(map[string]interface{})
+
+	if !suite.Equal("info", claimData["user"], "Incorrect claim user") {
+		return
+	}
+	if !suite.Equal("info", infoConnectionData["user"], "Incorrect connection user") {
+		return
+	}
+
+	if !suite.Equal([]string{"info_channel"}, interfaceToStringSlice(claimData["channels"]), "Incorrect claim channels") {
+		return
+	}
+
+	// Includes default_channels in info
+	if !suite.Equal([]string{"info_channel", "global"}, interfaceToStringSlice(infoConnectionData["channels"]), "Incorrect connection channels") {
+		return
+	}
+}
+
+func (suite *InfoSuite) TestInfoChannelClaim() {
+	claim, err := createClaim(claimOptions{
+		User:     "info",
+		Session:  "channel_claim",
+		Channels: []string{"info_channel_claim"},
+	})
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
+	}
+
+	info, err := getInfo(infoOptions{
+		target: target{
+			Channel: "info_channel_claim",
+		},
+	})
+	if !checkRequestError(suite.Suite, err, info, "getting info") {
+		return
+	}
+
+	infoClaims := info["claims"].([]interface{})
+	if !suite.Len(infoClaims, 1, "Incorrect number of claims") {
+		return
+	}
+
+	claimData := claim["claim"].(map[string]interface{})
+	infoClaimData := infoClaims[0].(map[string]interface{})
+
+	if !suite.Equal("info", claimData["user"], "Incorrect claim user") {
+		return
+	}
+	if !suite.Equal("info", infoClaimData["user"], "Incorrect info claim user") {
+		return
+	}
+
+	if !suite.Equal([]string{"info_channel_claim"}, interfaceToStringSlice(claimData["channels"]), "Incorrect claim channels") {
+		return
+	}
+
+	// Includes default_channels in info
+	if !suite.Equal([]string{"info_channel_claim"}, interfaceToStringSlice(infoClaimData["channels"]), "Incorrect info claim channels") {
 		return
 	}
 }

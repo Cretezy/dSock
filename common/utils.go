@@ -29,6 +29,16 @@ func UniqueString(texts []string) []string {
 	return texts[:removed]
 }
 
+func IncludesString(texts []string, text string) bool {
+	for _, value := range texts {
+		if value == text {
+			return true
+		}
+	}
+
+	return false
+}
+
 func RemoveEmpty(texts []string) []string {
 	removed := 0
 	for _, text := range texts {

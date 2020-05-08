@@ -4,4 +4,5 @@ redis_db = 0
 redis_host = "redis:6379"
 redis_password = ""
 token = "abc123"
-jwt_secret="abc123"
+jwt_secret = "abc123"
+default_channels = "global"

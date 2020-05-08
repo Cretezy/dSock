@@ -14,6 +14,17 @@ func resolveClaims(options common.ResolveOptions) ([]string, *common.ApiError) {
 		}
 
 		return userSessionClaims.Val(), nil
+	} else if options.Channel != "" {
+		channelClaims := redisClient.SMembers("claim-channel:" + options.Channel)
+
+		if channelClaims.Err() != nil {
+			return nil, &common.ApiError{
+				ErrorCode:  common.ErrorGettingClaim,
+				StatusCode: 500,
+			}
+		}
+
+		return channelClaims.Val(), nil
 	} else if options.User != "" {
 		userClaims := redisClient.SMembers("claim-user:" + options.User)
 

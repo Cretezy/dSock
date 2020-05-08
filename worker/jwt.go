@@ -4,5 +4,6 @@ import "github.com/dgrijalva/jwt-go"
 
 type JwtClaims struct {
 	jwt.StandardClaims
-	Session string `json:"sid,omitempty"`
+	Session  string   `json:"sid,omitempty"`
+	Channels []string `json:"channels,omitempty"`
 }

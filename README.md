@@ -113,9 +113,9 @@ dSock can be configured using a config file or using environment variables.
   - `DSOCK_REDIS_HOST` (`redis_host`, string): Redis host. Defaults to `localhost:6379`
   - `DSOCK_REDIS_PASSWORD` (`redis_password`, string): Redis password. Defaults to no password
   - `DSOCK_REDIS_DB` (`redis_db`, integer): Redis database. Defaults to `0`
+- `DSOCK_DEFAULT_CHANNELS` (`default_channels`, comma-delimited string, optional): When set, clients will be automatically subscribed to these channels
 - `DSOCK_JWT_SECRET` (`jwt_secret`, string, optional): When set, enables JWT authentication
 - `DSOCK_DEBUG` (`debug`, boolean): Enables debugging, useful for development. Defaults to `false`
-
 You can write your config file in TOML (recommended), JSON, YAML, or any format supported by [viper](https://github.com/spf13/viper)
 
 Configs are loaded from (in order):
@@ -137,6 +137,8 @@ Having an invalid or missing token will result in the `INVALID_AUTHORIZATION` er
 
 Most errors starting with `ERROR_` are downstream errors, usually from Redis. Check if your Redis connection is valid!
 
+When targeting, the precedence order is: `id`, `channel`, `user`.
+
 ### Client authentication
 
 #### Claims
@@ -149,6 +151,7 @@ You can create them by accessing the API as `POST /claim` with the following que
 
 - `user` (required, string): The user ID
   - `session` (optional, string): The session ID (scoped per user)
+- `channels` (optional, comma-delimited string): Channels to subscribe on join (merged with `default_channels`)
 - Time-related (not required, default expiration is 1 minute after the claim is created, only one used):
   - `expiration` (integer, seconds from epoch): Time the claim expires (takes precedence over `duration`)
   - `duration` (integer, seconds): Duration of the claim
@@ -162,15 +165,16 @@ The returned body will contain the following keys:
     - `expiration`: The expiration in seconds from epoch
     - `user`: The user for the claim
     - `session` (if session is provided): The user session for the claim
+    - `channels`: The channels to subscribe on join (excludes defaults)
 
 A claim is single-use, so once a client connects, it will instantly expire.
 
 ##### Examples
 
-Create a claim for a user (`1`) expiring in 10 seconds:
+Create a claim for a user (`1`) expiring in 10 seconds, with 2 channels:
 
 ```text
-POST /claim?token=abcxyz&user=1&duration=10
+POST /claim?token=abcxyz&user=1&duration=10&channels=group-1,group-2
 ```
 
 Create a claim for a user (`1`) with a session (`a`) with a claim ID (`a1b2c3`) expiring at some time:
@@ -200,6 +204,7 @@ Payload options:
 
 - `sub` (required, string): The user ID
 - `sid` (optional, string): The session ID (scoped per user)
+- `channels` (optional, array of string): Channels to subscribe on join (merged with `default_channels`)
 - Time-related (one is required):
   - [`iat`](https://tools.ietf.org/html/rfc7519#section-4.1.6) (integer, in seconds from epoch): Time the JWT is issued (expires 1 minute after this time)
   - [`exp`](https://tools.ietf.org/html/rfc7519#section-4.1.4) (integer, in seconds from epoch): Expiration time for the JWT, takes precedence over `iat`
@@ -234,6 +239,7 @@ Query param options:
   - `user` (string): The user ID to target
     - `session` (optional, string, when `user` is set): The specific session(s) to target from the user
   - `id` (string UUID): The specific internal connection ID
+  - `channel` (string): The channel to target
 - `type` (required, string): Message (body) type. Can be `text` (UTF-8 text) or `binary`. This becomes the WebSocket message type.
 - `token` (required, string): Authorization token for API set in config. Can also be a `Authorization` Bearer token
 
@@ -258,6 +264,15 @@ Authorization: Bearer abcxyz
 <Cretezy> Hey!
 ```
 
+Send a binary value to all clients subscribed in a channel:
+
+```text
+POST /send?channel=group-1&type=binary
+Authorization: Bearer abcxyz
+
+# Binary...
+```
+
 #### Errors
 
 The following errors can happen during sending a message:
@@ -265,7 +280,8 @@ The following errors can happen during sending a message:
 - `INVALID_AUTHORIZATION`: Invalid authentication (token). See errors section under usage
 - `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
 - `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
-- `MISSING_CONNECTION_OR_USER`: If `id` or `user` is not provided
+- `ERROR_GETTING_CHANNEL`: If `channel` is set and could not fetch channel (Redis error)
+- `MISSING_TARGET`: If target is not provider
 - `INVALID_MESSAGE_TYPE`: If the `type` is invalid
 - `ERROR_READING_MESSAGE`: If an error occurred during reading the request body
 - `ERROR_MARSHALLING_MESSAGE`: If an error occurred during preparing to send the message to the workers (shouldn't happen)
@@ -283,8 +299,9 @@ The API endpoint is `POST /disconnect`, with the following query params:
   - `user` (string): The user ID to target
     - `session` (optional, string, when `user` is set): The specific session(s) to target from the user
   - `id` (string UUID): The specific internal connection ID
+  - `channel` (string): The channel to target
 - `token` (required, string): Authorization token for API set in config. Can also be a `Authorization` Bearer token
-- `keepClaims` (optional, boolean): If to keep active claims for the target. By default, dSock will remove claims for the target to prevent race conditions
+- `keepClaims` (optional, boolean): When set to `true`, keeps active claims for the target. By default, dSock will remove claims for the target to prevent race conditions
 
 #### Examples
 
@@ -301,7 +318,8 @@ The following errors can happen during disconnection:
 - `INVALID_AUTHORIZATION`: Invalid authentication (token). See errors section under usage
 - `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
 - `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
-- `MISSING_CONNECTION_OR_USER`: If `id` or `user` is not provided
+- `ERROR_GETTING_CHANNEL`: If `channel` is set and could not fetch channel (Redis error)
+- `MISSING_TARGET`: If target is not provider
 - `ERROR_GETTING_CLAIM`: If an error occurred during fetching the claim(s) (Redis error)
 - `ERROR_MARSHALLING_MESSAGE`: If an error occurred during preparing to send the message to the workers (shouldn't happen)
 
@@ -310,9 +328,10 @@ The following errors can happen during disconnection:
 You can access info about connections and claims using the `GET /info` API endpoint. The following query params are supported:
 
 - Targeting (one is required):
-  - `user` (string): The user ID to target
-    - `session` (optional, string, when `user` is set): The specific session(s) to target from the user
+  - `user` (string): The user ID to query
+    - `session` (optional, string, when `user` is set): The specific session(s) to query from the user
   - `id` (string UUID): The specific internal connection ID
+  - `channel` (string): The channel to query
 - `token` (required, string): Authorization token for API set in config. Can also be a `Authorization` Bearer token
 
 The API will return all opened connections and non-expired claims for the target.
@@ -325,6 +344,7 @@ The returned object contains:
   - `lastPing`: Last ping from client in seconds from epoch
   - `user`: The connection's user
   - `session` (optional): The connection's session
+  - `channels`: The connection's subscribe channels (includes `default_channels`)
 - `claims` (array of objects): List of non-expired claims for the target:
   - `id`: Claim ID (what a client would connect with)
   - `expiration`: Claim expiration in seconds from epoch
@@ -347,7 +367,48 @@ The following errors can happen during getting info:
 - `ERROR_GETTING_CLAIM`: If an error occurred during fetching the claim(s) (Redis error)
 - `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
 - `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
-- `MISSING_CONNECTION_OR_USER`: If `id` or `user` is not provided
+- `ERROR_GETTING_CHANNEL`: If `channel` is set and could not fetch channel (Redis error)
+- `MISSING_TARGET`: If target is not provider
+
+### Channels
+
+You can subscribe/unsubscribe clients to a channel using `POST /channel/subscribe/$CHANNEL` or `POST /channel/subscribe/$CHANNEL`.
+
+This will subscribe the connections and claims (optional) for the target provided.
+
+The follow query parameters are accepted:
+- Targeting (one is required):
+  - `user` (string): The user ID to query
+    - `session` (optional, string, when `user` is set): The specific session(s) to query from the user
+  - `id` (string UUID): The specific internal connection ID
+  - `channel` (string): The channel to query
+- `ignoreClaims` (optional, boolean): When set to `true`, doesn't add channel to claims for target. By default, dSock will add the channel to the target claims (for when the client does join)
+- `token` (required, string): Authorization token for API set in config. Can also be a `Authorization` Bearer token
+
+#### Examples
+
+Subscribe a user (`1`) to a channel (`a`):
+
+```text
+POST /channel/subscribe/a?token=abcxyz&user=1
+```
+
+Unsubscribe all clients in a channel from a channel (`a`):
+
+```text
+POST /channel/unsubscribe/a?token=abcxyz&channel=a
+```
+
+#### Errors
+
+The following errors can happen during channel subscription/unsubscription:
+
+- `INVALID_AUTHORIZATION`: Invalid authentication (token). See errors section under usage
+- `ERROR_GETTING_CONNECTION`: If could not fetch connection(s) (Redis error)
+- `ERROR_GETTING_USER`: If `user` is set and could not fetch user (Redis error)
+- `ERROR_GETTING_CHANNEL`: If `channel` is set and could not fetch channel (Redis error)
+- `MISSING_TARGET`: If target is not provider
+- `ERROR_MARSHALLING_MESSAGE`: If an error occurred during preparing to send the message to the workers (shouldn't happen)
 
 ## Internals
 
@@ -361,6 +422,7 @@ When creating a claim, dSock does the following operations:
 - Set `claim:$id` to the claim information (user, session, expiration)
 - Add the claim ID to `claim-user:$user` (to be able to lookup all of a user's claims)
 - Add the claim ID to `claim-user-session:$user-$session` if session is passed (to be able to lookup all of a user session's claims)
+- Add the claim ID to `claim-channel:$channel` if channel is passed (to be able to lookup all of a channel's claims)
 
 When a user connects, dSock retrieves the claim by ID and validates it's expiration. It then removes the claim from the user and user session storages.
 
@@ -372,7 +434,8 @@ When a user connects and authenticates, dSock does the following operations:
 
 - Set `conn:$id` to the connection's information (using a random UUID, with user, session, worker ID, and last ping)
 - Add the connection ID to `user:$user` (to be able to lookup all of a user's connections)
-- Add the connection ID to `user-sesion:$user-$session` (to be able to lookup all of a user session's connections)
+- Add the connection ID to `user-sesion:$user-$session` (if session was in authentication, to be able to lookup all of a user session's connections)
+- Add the connection ID to `channel:$channel` (for each channel in authentication, to be able to lookup all of a channel's connections)
 
 When receiving a ping or pong from the client, it updates the last ping time. A ping is sent from the server every minute.
 
@@ -384,6 +447,20 @@ When sending a message, the API resolves of all of the workers that hold connect
 
 API to worker messages are encoded using [Protocol Buffer](https://developers.google.com/protocol-buffers) for efficiency;
 they are fast to encode/decode, and binary messages to not need to be encoded as strings during communication.
+
+### Channels
+
+Channels are assosiated to claims/JWTs (before a client connects) and connections.
+
+When (un)subscribing a target to a channel, it looks up all of the target's claims and adds the claim (if `ignoreClaim` is not set),
+and broadcasts to workers with connections that are connected through the `$workerId:channel` Redis channel.
+
+The worker then resolves all connections for the target and adds them to the channel.
+
+Channels are found under `channel:$channel` and contain the list of connection IDs which are subscribed.
+
+Claim channels are found under `claim-channel:$channel` and contain the list of claim IDs which will become subscribed,
+and is also stored under `channels` in the claim.
 
 ## FAQ
 

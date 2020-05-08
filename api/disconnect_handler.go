@@ -12,17 +12,18 @@ func disconnectHandler(c *gin.Context) {
 	connId := c.Query("id")
 	user := c.Query("user")
 	session := c.Query("session")
+	channel := c.Query("channel")
 	keepClaims := c.Query("keepClaims") == "true"
 
 	resolveOptions := common.ResolveOptions{
 		Connection: connId,
 		User:       user,
 		Session:    session,
+		Channel:    channel,
 	}
 
 	// Get all worker IDs that the target is connected to
 	workerIds, apiError := resolveWorkers(resolveOptions)
-
 	if apiError != nil {
 		apiError.Send(c)
 		return
@@ -44,17 +45,25 @@ func disconnectHandler(c *gin.Context) {
 		}
 
 		redisClient.SRem("claim-user:"+user, claimIds)
-		redisClient.SRem("claim-user-session:"+user+"-"+session, claimIds)
+		if session != "" {
+			redisClient.SRem("claim-user-session:"+user+"-"+session, claimIds)
+		}
+		if channel != "" {
+			redisClient.SRem("claim-channel:"+channel, claimIds)
+		}
 
 		redisClient.Del(claimKeys...)
 	}
 
 	// Prepare message for worker
 	message := &protos.Message{
-		User:       user,
-		Connection: connId,
-		Session:    session,
-		Type:       protos.Message_DISCONNECT,
+		Type: protos.Message_DISCONNECT,
+		Target: &protos.Target{
+			Connection: connId,
+			User:       user,
+			Session:    session,
+			Channel:    channel,
+		},
 	}
 
 	rawMessage, err := proto.Marshal(message)

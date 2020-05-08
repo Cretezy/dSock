@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/Cretezy/dSock/common"
 	"github.com/gin-gonic/gin"
+	"strings"
 	"sync"
 	"time"
 )
@@ -16,6 +17,7 @@ func formatConnection(id string, connection map[string]string) gin.H {
 		"worker":   connection["workerId"],
 		"lastPing": lastPingTime.Unix(),
 		"user":     connection["user"],
+		"channels": strings.Split(connection["channels"], ","),
 	}
 
 	if connection["session"] != "" {
@@ -33,6 +35,7 @@ func formatClaim(id string, claim map[string]string) gin.H {
 		"id":         id,
 		"expiration": expirationTime.Unix(),
 		"user":       claim["user"],
+		"channels":   strings.Split(claim["channels"], ","),
 	}
 
 	if claim["session"] != "" {
@@ -46,11 +49,13 @@ func infoHandler(c *gin.Context) {
 	connId := c.Query("id")
 	user := c.Query("user")
 	session := c.Query("session")
+	channel := c.Query("channel")
 
 	claimIds, apiError := resolveClaims(common.ResolveOptions{
 		Connection: connId,
 		User:       user,
 		Session:    session,
+		Channel:    channel,
 	})
 	if apiError != nil {
 		apiError.Send(c)
@@ -219,10 +224,85 @@ func infoHandler(c *gin.Context) {
 			"connections": connections,
 			"claims":      claims,
 		})
+	} else if channel != "" {
+		channel := redisClient.SMembers("channel:" + channel)
+
+		if channel.Err() != nil {
+			apiError := common.ApiError{
+				InternalError: channel.Err(),
+				StatusCode:    500,
+				ErrorCode:     common.ErrorGettingChannel,
+			}
+			apiError.Send(c)
+			return
+		}
+
+		if len(channel.Val()) == 0 {
+			// User doesn't exist
+			c.AbortWithStatusJSON(200, map[string]interface{}{
+				"success":     true,
+				"connections": []interface{}{},
+				"claims":      claims,
+			})
+			return
+		}
+
+		var connectionsWaitGroup sync.WaitGroup
+		connectionsWaitGroup.Add(len(channel.Val()))
+
+		var connectionsLock sync.Mutex
+		connections := make([]gin.H, 0)
+
+		var apiError *common.ApiError
+
+		for _, connId := range channel.Val() {
+			connId := connId
+			go func() {
+				defer connectionsWaitGroup.Done()
+
+				connection := redisClient.HGetAll("conn:" + connId)
+
+				// Stop if one of the Redis commands failed
+				if apiError != nil {
+					return
+				}
+
+				if connection.Err() != nil {
+					apiError = &common.ApiError{
+						InternalError: connection.Err(),
+						StatusCode:    500,
+						ErrorCode:     common.ErrorGettingConnection,
+					}
+					return
+				}
+
+				if len(connection.Val()) == 0 {
+					// Connection doesn't exist
+					return
+				}
+
+				connectionsLock.Lock()
+				connections = append(connections, formatConnection(connId, connection.Val()))
+				connectionsLock.Unlock()
+			}()
+		}
+
+		connectionsWaitGroup.Wait()
+
+		if apiError != nil {
+			apiError.Send(c)
+			return
+		}
+
+		c.AbortWithStatusJSON(200, map[string]interface{}{
+			"success":     true,
+			"connections": connections,
+			"claims":      claims,
+		})
 	} else {
 		apiError := common.ApiError{
 			StatusCode: 400,
-			ErrorCode:  common.ErrorMissingConnectionOrUser,
+			ErrorCode:  common.ErrorTarget,
 		}
 		apiError.Send(c)
 	}

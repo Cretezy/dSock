@@ -31,7 +31,9 @@ func (suite *DisconnectSuite) TestUserDisconnect() {
 	defer conn.Close()
 
 	disconnectResponse, err := disconnect(disconnectOptions{
-		User: "disconnect_user",
+		target: target{
+			User: "disconnect_user",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
 		return
@@ -68,8 +70,10 @@ func (suite *DisconnectSuite) TestSessionDisconnect() {
 	defer conn.Close()
 
 	disconnectResponse, err := disconnect(disconnectOptions{
-		User:    "disconnect",
-		Session: "session",
+		target: target{
+			User:    "disconnect",
+			Session: "session",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
 		return
@@ -106,8 +110,10 @@ func (suite *DisconnectSuite) TestConnectionDisconnect() {
 	defer conn.Close()
 
 	info, err := getInfo(infoOptions{
-		User:    "disconnect",
-		Session: "connection",
+		target: target{
+			User:    "disconnect",
+			Session: "connection",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, info, "getting info") {
 		return
@@ -121,7 +127,9 @@ func (suite *DisconnectSuite) TestConnectionDisconnect() {
 	id := infoConnections[0].(map[string]interface{})["id"].(string)
 
 	disconnectResponse, err := disconnect(disconnectOptions{
-		Id: id,
+		target: target{
+			Id: id,
+		},
 	})
 	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
 		return
@@ -164,8 +172,10 @@ func (suite *DisconnectSuite) TestNoSessionDisconnect() {
 	}()
 
 	disconnectResponse, err := disconnect(disconnectOptions{
-		User:    "disconnect",
-		Session: "no_session_bad",
+		target: target{
+			User:    "disconnect",
+			Session: "no_session_bad",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
 		return
@@ -189,8 +199,10 @@ func (suite *DisconnectSuite) TestDisconnectExpireClaim() {
 	}
 
 	infoBefore, err := getInfo(infoOptions{
-		User:    "disconnect",
-		Session: "expire_claim",
+		target: target{
+			User:    "disconnect",
+			Session: "expire_claim",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, infoBefore, "getting before info") {
 		return
@@ -203,16 +215,20 @@ func (suite *DisconnectSuite) TestDisconnectExpireClaim() {
 	}
 
 	disconnectResponse, err := disconnect(disconnectOptions{
-		User:    "disconnect",
-		Session: "expire_claim",
+		target: target{
+			User:    "disconnect",
+			Session: "expire_claim",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
 		return
 	}
 
 	infoAfter, err := getInfo(infoOptions{
-		User:    "disconnect",
-		Session: "expire_claim",
+		target: target{
+			User:    "disconnect",
+			Session: "expire_claim",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, infoBefore, "getting after info") {
 		return
@@ -234,8 +250,10 @@ func (suite *DisconnectSuite) TestDisconnectKeepClaim() {
 		return
 	}
 	infoBefore, err := getInfo(infoOptions{
-		User:    "disconnect",
-		Session: "keep_claim",
+		target: target{
+			User:    "disconnect",
+			Session: "keep_claim",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, infoBefore, "getting info") {
 		return
@@ -248,8 +266,10 @@ func (suite *DisconnectSuite) TestDisconnectKeepClaim() {
 	}
 
 	disconnectResponse, err := disconnect(disconnectOptions{
-		User:       "disconnect",
-		Session:    "keep_claim_invalid",
+		target: target{
+			User:    "disconnect",
+			Session: "keep_claim_invalid",
+		},
 		KeepClaims: true,
 	})
 	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
@@ -257,8 +277,10 @@ func (suite *DisconnectSuite) TestDisconnectKeepClaim() {
 	}
 
 	infoAfter, err := getInfo(infoOptions{
-		User:    "disconnect",
-		Session: "keep_claim",
+		target: target{
+			User:    "disconnect",
+			Session: "keep_claim",
+		},
 	})
 	if !checkRequestError(suite.Suite, err, infoAfter, "getting after info") {
 		return
@@ -268,5 +290,45 @@ func (suite *DisconnectSuite) TestDisconnectKeepClaim() {
 
 	if !suite.Len(claimsAfter, 1, "Incorrect number of claims after") {
 		return
+	}
+}
+
+func (suite *DisconnectSuite) TestChannelDisconnect() {
+	claim, err := createClaim(claimOptions{
+		User:     "disconnect",
+		Session:  "channel",
+		Channels: []string{"disconnect_channel"},
+	})
+	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+		return
+	}
+
+	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
+	if !checkConnectionError(suite.Suite, err, resp) {
+		return
+	}
+
+	defer conn.Close()
+
+	disconnectResponse, err := disconnect(disconnectOptions{
+		target: target{
+			Channel: "disconnect_channel",
+		},
+	})
+	if !checkRequestError(suite.Suite, err, disconnectResponse, "disconnection") {
+		return
+	}
+
+	_, _, err = conn.ReadMessage()
+	if !suite.Error(err, "Didn't get error when was expecting") {
+		return
+	}
+
+	if closeErr, ok := err.(*websocket.CloseError); ok {
+		if !suite.Equal(websocket.CloseNormalClosure, closeErr.Code, "Incorrect close type") {
+			return
+		}
+	} else {
+		suite.Failf("Incorrect error type: %s", err.Error())
 	}
 }

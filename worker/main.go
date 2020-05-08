@@ -28,8 +28,9 @@ var upgrader = websocket.Upgrader{
 
 var workerId = uuid.New().String()
 
-var connections = make(map[string]SockConnection)
+var connections = make(map[string]*SockConnection)
 var users = make(map[string][]string)
+var channels = make(map[string][]string)
 
 var redisClient *redis.Client
 var options common.DSockOptions
@@ -49,7 +50,8 @@ func main() {
 		panic(err)
 	}
 
-	subscription := redisClient.Subscribe(workerId)
+	messageSubscription := redisClient.Subscribe(workerId)
+	channelSubscription := redisClient.Subscribe(workerId + ":channel")
 
 	if options.Debug {
 		gin.SetMode(gin.DebugMode)
@@ -75,10 +77,10 @@ func main() {
 		}
 	}()
 
-	// Look receiving messages from Redis
+	// Loop receiving messages from Redis
 	go func() {
 		for {
-			redisMessage, err := subscription.ReceiveMessage()
+			redisMessage, err := messageSubscription.ReceiveMessage()
 			if err != nil {
 				// TODO: Possibly add better handling
 				log.Printf("Error receiving from Redis: %s\n", err)
@@ -95,7 +97,35 @@ func main() {
 				continue
 			}
 
-			go send(&message)
+			go handleSend(&message)
+
+			if signalQuit == nil {
+				break
+			}
+		}
+	}()
+
+	// Loop receiving channel actions from Redis
+	go func() {
+		for {
+			redisMessage, err := channelSubscription.ReceiveMessage()
+			if err != nil {
+				// TODO: Possibly add better handling
+				log.Printf("Error receiving from Redis: %s\n", err)
+				break
+			}
+
+			var channelAction protos.ChannelAction
+
+			err = proto.Unmarshal([]byte(redisMessage.Payload), &channelAction)
+
+			if err != nil {
+				// Couldn't parse channel action
+				log.Printf("Invalid channel action from Redis: %s\n", err)
+				continue
+			}
+
+			go handleChannel(&channelAction)
 
 			if signalQuit == nil {
 				break
@@ -125,7 +155,8 @@ func main() {
 	}
 
 	// Cleanup
-	_ = subscription.Close()
+	_ = messageSubscription.Close()
+	_ = channelSubscription.Close()
 
 	// Disconnect all connections
 	for _, connection := range connections {

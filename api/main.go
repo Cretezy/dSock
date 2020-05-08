@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/Cretezy/dSock/common"
+	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v7"
 	"log"
@@ -45,6 +46,8 @@ func main() {
 	router.POST(common.PathDisconnect, disconnectHandler)
 	router.POST(common.PathClaim, createClaimHandler)
 	router.GET(common.PathInfo, infoHandler)
+	router.POST(common.PathChannelSubscribe, getChannelHandler(protos.ChannelAction_SUBSCRIBE))
+	router.POST(common.PathChannelUnsubscribe, getChannelHandler(protos.ChannelAction_UNSUBSCRIBE))
 
 	// Start HTTP server
 	srv := &http.Server{

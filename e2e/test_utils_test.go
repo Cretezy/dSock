@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"time"
 )
 
@@ -51,4 +52,19 @@ func checkRequestNoError(suite suite.Suite, err error, body map[string]interface
 	}
 
 	return true
+}
+
+func interfaceToStringSlice(slice interface{}) []string {
+	s := reflect.ValueOf(slice)
+	if s.Kind() != reflect.Slice {
+		panic("interfaceSlice() given a non-slice type")
+	}
+
+	ret := make([]string, s.Len())
+
+	for i := 0; i < s.Len(); i++ {
+		ret[i] = s.Index(i).Interface().(string)
+	}
+
+	return ret
 }

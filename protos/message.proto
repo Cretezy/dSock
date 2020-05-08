@@ -1,6 +1,13 @@
 syntax = "proto3";
 option go_package = "github.com/Cretezy/dSock/common/protos";
 
+message Target {
+    string connection = 1;
+    string user = 2;
+    string session = 3;
+    string channel = 4;
+}
+
 message Message {
     enum MessageType {
         DISCONNECT = 0;
@@ -12,7 +19,17 @@ message Message {
     MessageType type = 1;
     bytes body = 2;
 
-    string connection = 3;
-    string user = 4;
-    string session = 5;
+    Target target = 3;
+}
+
+
+message ChannelAction {
+    enum ChannelActionType {
+        SUBSCRIBE = 0;
+        UNSUBSCRIBE = 2;
+    }
+
+    string channel = 1;
+    Target target = 2;
+    ChannelActionType type = 3;
 }

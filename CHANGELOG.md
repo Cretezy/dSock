@@ -1,5 +1,14 @@
 ## Unreleased
 
+- **Breaking**
+    - Change `MISSING_CONNECTION_OR_USER` to `MISSING_TARGET` (and changed message)
+- Added channels:
+    - Added `channel` target option to sending, getting info, disconnect
+    - Added `channels` JWT claim (array of strings)
+    - Added `channels` to claim creation (comma-delimited string)
+    - Added `channels` to info response for connections
+    - Added channel subscribing and unsubscribing
+    - Added `default_channels` config options (comma-delimited string)
 - Replace `scripts` directory with [Task](https://taskfile.dev)
 
 ## v0.2.0 - 2020-05-06
