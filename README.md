@@ -372,7 +372,7 @@ The following errors can happen during getting info:
 
 ### Channels
 
-You can subscribe/unsubscribe clients to a channel using `POST /channel/subscribe/$CHANNEL` or `POST /channel/subscribe/$CHANNEL`.
+You can subscribe/unsubscribe clients to a channel using `POST /channel/subscribe/$CHANNEL` or `POST /channel/unsubscribe/$CHANNEL`.
 
 This will subscribe the connections and claims (optional) for the target provided.
 
