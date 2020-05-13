@@ -1,28 +1,26 @@
 package main
 
 import (
+	"log"
+	"strings"
+	"sync"
+
 	"github.com/Cretezy/dSock/common"
 	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-gonic/gin"
-	"strings"
-	"sync"
 )
 
 func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		connId := c.Query("id")
-		user := c.Query("user")
-		session := c.Query("session")
-		channel := c.Query("channel")
+		resolveOptions := common.ResolveOptions{}
+
+		err := c.BindQuery(&resolveOptions)
+		if err != nil {
+			log.Println("error on binding query params")
+		}
+
 		channelChange := c.Param("channel")
 		ignoreClaims := c.Query("ignoreClaims") == "true"
-
-		resolveOptions := common.ResolveOptions{
-			Connection: connId,
-			User:       user,
-			Session:    session,
-			Channel:    channel,
-		}
 
 		// Get all worker IDs that the target(s) is connected to
 		workerIds, apiError := resolveWorkers(resolveOptions)
@@ -96,10 +94,10 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 		message := &protos.ChannelAction{
 			Channel: channelChange,
 			Target: &protos.Target{
-				Connection: connId,
-				User:       user,
-				Session:    session,
-				Channel:    channel,
+				Connection: resolveOptions.Connection,
+				User:       resolveOptions.User,
+				Session:    resolveOptions.Session,
+				Channel:    resolveOptions.Channel,
 			},
 			Type: actionType,
 		}
