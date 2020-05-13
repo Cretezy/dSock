@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/suite"
 	"testing"
+	"time"
 )
 
 type ChannelSuite struct {
@@ -40,6 +41,9 @@ func (suite *ChannelSuite) TestChannelSubscribe() {
 	if !checkRequestError(suite.Suite, err, subscribe, "subscribing channel") {
 		return
 	}
+
+	// Give it some time to propagate
+	time.Sleep(time.Millisecond * 10)
 
 	info, err := getInfo(infoOptions{
 		target: target{

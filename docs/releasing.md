@@ -10,7 +10,7 @@
 
 - Create and push version tag
 - Run `task build:binaries`
-- Upload all files in `build` to GitHub release
+- Upload all files in `build` to GitHub release (and add release notes)
 
 ## Docker
 
