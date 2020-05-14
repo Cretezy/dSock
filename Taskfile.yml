@@ -66,6 +66,13 @@ tasks:
       - echo "Building worker - macOS"
       - cd worker && GOOS=darwin GOARCH=amd64 go build -o ../build/worker-darwin-amd64 -ldflags "-s -w"
 
+  build:binaries:single:
+    cmds:
+      - echo "Building API - Linux"
+      - cd api && go build -o ../build/api
+      - echo "Building worker - Linux"
+      - cd worker && go build -o ../build/worker
+
   build:docker:
     cmds:
       - docker build -t dsock-api -f api/Dockerfile .

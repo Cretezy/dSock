@@ -26,14 +26,12 @@ func handleChannel(channelAction *protos.ChannelAction) {
 			connection.Channels = append(connection.Channels, channelAction.Channel)
 			connection.lock.Unlock()
 
-			channelEntry, channelExists := channels[channelAction.Channel]
-			channelsLock.Lock()
+			channelEntry, channelExists := channels.Channels[channelAction.Channel]
 			if channelExists {
-				channels[channelAction.Channel] = append(channelEntry, connection.Id)
+				channels.Set(channelAction.Channel, append(channelEntry, connection.Id))
 			} else {
-				channels[channelAction.Channel] = []string{connection.Id}
+				channels.Set(channelAction.Channel, []string{connection.Id})
 			}
-			channelsLock.Unlock()
 
 			redisClient.SAdd("channel:"+channelAction.Channel, connection.Id)
 		} else if channelAction.Type == protos.ChannelAction_UNSUBSCRIBE && common.IncludesString(connection.Channels, channelAction.Channel) {
@@ -41,11 +39,9 @@ func handleChannel(channelAction *protos.ChannelAction) {
 			connection.Channels = common.RemoveString(connection.Channels, channelAction.Channel)
 			connection.lock.Unlock()
 
-			channelEntry, channelExists := channels[channelAction.Channel]
+			channelEntry, channelExists := channels.Channels[channelAction.Channel]
 			if channelExists {
-				channelsLock.Lock()
-				channels[channelAction.Channel] = common.RemoveString(channelEntry, connection.Id)
-				channelsLock.Unlock()
+				channels.Set(channelAction.Channel, common.RemoveString(channelEntry, connection.Id))
 			}
 
 			redisClient.SRem("channel:"+channelAction.Channel, connection.Id)

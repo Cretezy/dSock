@@ -46,28 +46,22 @@ func connectHandler(c *gin.Context) {
 		Channels:     authentication.Channels,
 	}
 
-	connectionsLock.Lock()
-	connections[connId] = &connection
-	connectionsLock.Unlock()
+	connections.Add(&connection)
 
-	usersEntry, userExists := users[connection.User]
-	usersLock.Lock()
+	usersEntry, userExists := users.Users[connection.User]
 	if userExists {
-		users[connection.User] = append(usersEntry, connId)
+		users.Set(connection.User, append(usersEntry, connId))
 	} else {
-		users[connection.User] = []string{connId}
+		users.Set(connection.User, []string{connId})
 	}
-	usersLock.Unlock()
 
 	for _, channel := range connection.Channels {
-		channelEntry, channelExists := channels[channel]
-		channelsLock.Lock()
+		channelEntry, channelExists := channels.Channels[channel]
 		if channelExists {
-			channels[channel] = append(channelEntry, connId)
+			channels.Set(channel, append(channelEntry, connId))
 		} else {
-			channels[channel] = []string{connId}
+			channels.Set(channel, []string{connId})
 		}
-		channelsLock.Unlock()
 
 		redisClient.SAdd("channel:"+channel, connId)
 	}
@@ -157,18 +151,12 @@ SendLoop:
 				redisClient.SRem("user-session:"+connection.User+"-"+connection.Session, connId)
 			}
 
-			connectionsLock.Lock()
-			delete(connections, connId)
-			connectionsLock.Unlock()
+			connections.Remove(connId)
 
-			usersLock.Lock()
-			users[connection.User] = common.RemoveString(users[connection.User], connId)
-			usersLock.Unlock()
+			users.Set(connection.User, common.RemoveString(users.Users[connection.User], connId))
 
 			for _, channel := range connection.Channels {
-				channelsLock.Lock()
-				channels[channel] = common.RemoveString(channels[channel], connId)
-				channelsLock.Unlock()
+				channels.Set(channel, common.RemoveString(channels.Channels[channel], connId))
 
 				redisClient.SRem("channel:"+channel, connId)
 			}
