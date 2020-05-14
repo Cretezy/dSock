@@ -3,13 +3,31 @@ package main
 import (
 	"github.com/Cretezy/dSock/common"
 	"github.com/Cretezy/dSock/common/protos"
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"strings"
 	"sync"
 )
 
+var actionTypeName = map[protos.ChannelAction_ChannelActionType]string{
+	protos.ChannelAction_SUBSCRIBE:   "subscribe",
+	protos.ChannelAction_UNSUBSCRIBE: "unsubscribe",
+}
+
 func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		logger.Debug("Getting channel request",
+			zap.String("requestId", requestid.Get(c)),
+			zap.String("action", actionTypeName[actionType]),
+			zap.String("id", c.Query("id")),
+			zap.String("user", c.Query("user")),
+			zap.String("session", c.Query("session")),
+			zap.String("channel", c.Query("channel")),
+			zap.String("ignoreClaims", c.Query("ignoreClaims")),
+			zap.String("channelChange", c.Param("channel")),
+		)
+
 		resolveOptions := common.ResolveOptions{}
 
 		err := c.BindQuery(&resolveOptions)

@@ -3,6 +3,8 @@
 - Improve query binding
 - Add locking for concurrent state (thanks a lot [@abdullah-aghayan](https://github.com/abdullah-aghayan)!)
 - Change logger to Zap
+- Added logging to all requests
+- Change unsubscribe type from 2 to 1 (internal type)
 
 ## v0.3.0 - 2020-05-08
 

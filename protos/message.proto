@@ -26,7 +26,7 @@ message Message {
 message ChannelAction {
     enum ChannelActionType {
         SUBSCRIBE = 0;
-        UNSUBSCRIBE = 2;
+        UNSUBSCRIBE = 1;
     }
 
     string channel = 1;

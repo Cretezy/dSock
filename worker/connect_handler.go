@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/Cretezy/dSock/common/protos"
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -12,6 +13,12 @@ import (
 )
 
 func connectHandler(c *gin.Context) {
+	logger.Debug("Getting new connection request",
+		zap.String("requestId", requestid.Get(c)),
+		zap.String("claim", c.Query("claim")),
+		zap.String("jwt", c.Query("jwt")),
+	)
+
 	// Authenticate client and get user/session
 	authentication, apiError := authenticate(c)
 	if apiError != nil {
@@ -19,12 +26,20 @@ func connectHandler(c *gin.Context) {
 		return
 	}
 
+	logger.Debug("Authenticated connection request",
+		zap.String("requestId", requestid.Get(c)),
+		zap.String("user", authentication.User),
+		zap.String("session", authentication.Session),
+		zap.Strings("channels", authentication.Channels),
+	)
+
 	authentication.Channels = append(authentication.Channels, options.DefaultChannels...)
 
 	// Upgrade to a WebSocket connection
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		logger.Warn("Could not upgrade request to WebSocket",
+			zap.String("requestId", requestid.Get(c)),
 			zap.Error(err),
 		)
 		return
@@ -32,6 +47,11 @@ func connectHandler(c *gin.Context) {
 
 	// Generate connection ID (random UUIDv4, can't be guessed)
 	connId := uuid.New().String()
+
+	logger.Debug("Upgraded connection request",
+		zap.String("requestId", requestid.Get(c)),
+		zap.String("id", connId),
+	)
 
 	// Channel that will be used to handleSend messages to the client
 	sender := make(chan *protos.Message)
@@ -128,6 +148,11 @@ SendLoop:
 			_ = conn.WriteMessage(int(message.Type), message.Body)
 			break
 		case <-connection.CloseChannel:
+			logger.Debug("Disconnecting user",
+				zap.String("requestId", requestid.Get(c)),
+				zap.String("id", connId),
+			)
+
 			connection.CloseChannel = nil
 			// Send close message with 1000
 			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))

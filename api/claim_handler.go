@@ -2,7 +2,9 @@ package main
 
 import (
 	"github.com/Cretezy/dSock/common"
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +20,16 @@ type claimOptions struct {
 }
 
 func createClaimHandler(c *gin.Context) {
+	logger.Debug("Getting new claim request",
+		zap.String("requestId", requestid.Get(c)),
+		zap.String("id", c.Query("id")),
+		zap.String("user", c.Query("user")),
+		zap.String("session", c.Query("session")),
+		zap.String("channels", c.Query("channels")),
+		zap.String("expiration", c.Query("expiration")),
+		zap.String("duration", c.Query("duration")),
+	)
+
 	claimOptions := claimOptions{}
 
 	err := c.BindQuery(&claimOptions)
@@ -161,6 +173,15 @@ func createClaimHandler(c *gin.Context) {
 		channelKey := "claim-channel:" + channel
 		redisClient.SAdd(channelKey, id, 0)
 	}
+
+	logger.Debug("Created new claim",
+		zap.String("requestId", requestid.Get(c)),
+		zap.String("id", id),
+		zap.String("user", claimOptions.User),
+		zap.Strings("channels", channels),
+		zap.String("session", claimOptions.Session),
+		zap.Time("expiration", expirationTime),
+	)
 
 	claimResponse := gin.H{
 		"id":         id,

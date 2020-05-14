@@ -44,18 +44,23 @@ var options *common.DSockOptions
 
 func init() {
 	var err error
-	logger, err = zap.NewProduction()
-	if err != nil {
-		println("Could not create logger")
-		panic(err)
-	}
 
 	options, err = common.GetOptions()
 
 	if err != nil {
-		logger.Fatal("Could not get options. Make sure your config is valid!",
-			zap.Error(err),
-		)
+		println("Could not get options. Make sure your config is valid!")
+		panic(err)
+	}
+
+	if options.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+
+	if err != nil {
+		println("Could not create logger")
+		panic(err)
 	}
 }
 
@@ -83,6 +88,8 @@ func main() {
 	}
 
 	router := gin.Default()
+	router.Use(common.RequestIdMiddleware)
+
 	router.GET(common.PathConnect, connectHandler)
 
 	// Start HTTP server

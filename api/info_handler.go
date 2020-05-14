@@ -2,7 +2,9 @@ package main
 
 import (
 	"github.com/Cretezy/dSock/common"
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"strings"
 	"sync"
 	"time"
@@ -46,6 +48,14 @@ func formatClaim(id string, claim map[string]string) gin.H {
 }
 
 func infoHandler(c *gin.Context) {
+	logger.Debug("Getting info request",
+		zap.String("requestId", requestid.Get(c)),
+		zap.String("id", c.Query("id")),
+		zap.String("user", c.Query("user")),
+		zap.String("session", c.Query("session")),
+		zap.String("channel", c.Query("channel")),
+	)
+
 	resolveOptions := common.ResolveOptions{}
 
 	err := c.BindQuery(&resolveOptions)

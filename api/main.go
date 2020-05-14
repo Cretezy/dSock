@@ -58,6 +58,7 @@ func main() {
 	}
 
 	router := gin.Default()
+	router.Use(common.RequestIdMiddleware)
 	router.Use(common.TokenMiddleware(options.Token))
 
 	router.POST(common.PathSend, sendHandler)
