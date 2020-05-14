@@ -23,6 +23,7 @@ var (
 	ErrorReadingMessage        = "ERROR_READING_MESSAGE"
 	ErrorMarshallingMessage    = "ERROR_MARSHALLING_MESSAGE"
 	ErrorInvalidMessageType    = "INVALID_MESSAGE_TYPE"
+	ErrorBindingQueryParams    = "ERROR_BINDING_QUERY_PARAMS"
 )
 
 var ErrorMessages = map[string]string{
@@ -46,6 +47,7 @@ var ErrorMessages = map[string]string{
 	ErrorReadingMessage:        "Error reading message",
 	ErrorMarshallingMessage:    "Error marshalling message",
 	ErrorInvalidMessageType:    "Invalid message type, must be text or binary",
+	ErrorBindingQueryParams:    "Error binding query parameters",
 }
 
 type ApiError struct {

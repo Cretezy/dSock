@@ -8,18 +8,21 @@ import (
 )
 
 func sendHandler(c *gin.Context) {
-	connId := c.Query("id")
-	user := c.Query("user")
-	session := c.Query("session")
-	channel := c.Query("channel")
+	resolveOptions := common.ResolveOptions{}
+
+	err := c.BindQuery(&resolveOptions)
+	if err != nil {
+		apiError := &common.ApiError{
+			InternalError: err,
+			ErrorCode:     common.ErrorBindingQueryParams,
+			StatusCode:    400,
+		}
+		apiError.Send(c)
+		return
+	}
 
 	// Get all worker IDs that the target(s) is connected to
-	workerIds, apiError := resolveWorkers(common.ResolveOptions{
-		Connection: connId,
-		User:       user,
-		Session:    session,
-		Channel:    channel,
-	})
+	workerIds, apiError := resolveWorkers(resolveOptions)
 	if apiError != nil {
 		apiError.Send(c)
 		return
@@ -53,10 +56,10 @@ func sendHandler(c *gin.Context) {
 		Type: parsedMessageType,
 		Body: body,
 		Target: &protos.Target{
-			Connection: connId,
-			User:       user,
-			Session:    session,
-			Channel:    channel,
+			Connection: resolveOptions.Connection,
+			User:       resolveOptions.User,
+			Session:    resolveOptions.Session,
+			Channel:    resolveOptions.Channel,
 		},
 	}
 
