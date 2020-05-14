@@ -21,14 +21,15 @@ func handleChannel(channelAction *protos.ChannelAction) {
 
 	// Apply to all connections for target
 	for _, connection := range connections {
-		if channelAction.Type == protos.ChannelAction_SUBSCRIBE && !common.IncludesString(connection.Channels, channelAction.Channel) {
-			connection.SetChannels(append(connection.Channels, channelAction.Channel))
+		connectionChannels := connection.GetChannels()
+		if channelAction.Type == protos.ChannelAction_SUBSCRIBE && !common.IncludesString(connectionChannels, channelAction.Channel) {
+			connection.SetChannels(append(connectionChannels, channelAction.Channel))
 
 			channels.Add(channelAction.Channel, connection.Id)
 
 			redisClient.SAdd("channel:"+channelAction.Channel, connection.Id)
-		} else if channelAction.Type == protos.ChannelAction_UNSUBSCRIBE && common.IncludesString(connection.Channels, channelAction.Channel) {
-			connection.SetChannels(common.RemoveString(connection.Channels, channelAction.Channel))
+		} else if channelAction.Type == protos.ChannelAction_UNSUBSCRIBE && common.IncludesString(connectionChannels, channelAction.Channel) {
+			connection.SetChannels(common.RemoveString(connectionChannels, channelAction.Channel))
 
 			channels.Remove(channelAction.Channel, connection.Id)
 
@@ -38,6 +39,6 @@ func handleChannel(channelAction *protos.ChannelAction) {
 			return
 		}
 
-		redisClient.HSet("conn:"+connection.Id, "channels", strings.Join(connection.Channels, ","))
+		redisClient.HSet("conn:"+connection.Id, "channels", strings.Join(connection.GetChannels(), ","))
 	}
 }

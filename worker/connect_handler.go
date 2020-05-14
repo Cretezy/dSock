@@ -42,13 +42,13 @@ func connectHandler(c *gin.Context) {
 		Session:      authentication.Session,
 		Sender:       sender,
 		CloseChannel: make(chan struct{}),
-		Channels:     authentication.Channels,
+		channels:     authentication.Channels,
 	}
 
 	connections.Add(&connection)
 	users.Add(connection.User, connId)
 
-	for _, channel := range connection.Channels {
+	for _, channel := range authentication.Channels {
 		channels.Add(channel, connId)
 
 		redisClient.SAdd("channel:"+channel, connId)
@@ -59,13 +59,13 @@ func connectHandler(c *gin.Context) {
 		"user":     connection.User,
 		"workerId": workerId,
 		"lastPing": time.Now().Format(time.RFC3339),
-		"channels":    strings.Join(connection.Channels, ","),
+		"channels": strings.Join(authentication.Channels, ","),
 	}
 	if connection.Session != "" {
 		redisConnection["session"] = connection.Session
 	}
-	if len(connection.Channels) != 0 {
-		redisConnection["channels"] = strings.Join(connection.Channels, ",")
+	if len(authentication.Channels) != 0 {
+		redisConnection["channels"] = strings.Join(authentication.Channels, ",")
 	}
 	redisClient.HSet("conn:"+connId, redisConnection)
 
@@ -143,7 +143,7 @@ SendLoop:
 
 			users.Remove(connection.User, connId)
 
-			for _, channel := range connection.Channels {
+			for _, channel := range connection.GetChannels() {
 				channels.Remove(channel, connId)
 
 				redisClient.SRem("channel:"+channel, connId)
@@ -164,13 +164,20 @@ type SockConnection struct {
 	Sender chan *protos.Message
 	/// Channel to close the connect. nil when connection is closed/closing
 	CloseChannel chan struct{}
-	Channels     []string
-	lock         sync.Mutex
+	channels     []string
+	lock         sync.RWMutex
 }
 
 func (connection *SockConnection) SetChannels(channels []string) {
 	connection.lock.Lock()
 	defer connection.lock.Unlock()
 
-	connection.Channels = channels
+	connection.channels = channels
+}
+
+func (connection *SockConnection) GetChannels() []string {
+	connection.lock.RLock()
+	defer connection.lock.RUnlock()
+
+	return connection.channels
 }
