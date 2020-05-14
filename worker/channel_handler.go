@@ -38,6 +38,6 @@ func handleChannel(channelAction *protos.ChannelAction) {
 			return
 		}
 
-		redisClient.HSet("conn:"+connection.Id, "channels", strings.Join(connection.Channels, ","))
+		redisClient.HSet("conn:"+connection.Id, "state", strings.Join(connection.Channels, ","))
 	}
 }

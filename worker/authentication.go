@@ -70,14 +70,14 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 		if session != "" {
 			redisClient.SRem("claim-user-session:"+user+"-"+session, claim)
 		}
-		for _, channel := range strings.Split(claimData.Val()["channels"], ",") {
+		for _, channel := range strings.Split(claimData.Val()["state"], ",") {
 			redisClient.SRem("claim-channel:"+channel, claim)
 		}
 
 		return &Authentication{
 			User:     user,
 			Session:  session,
-			Channels: common.RemoveEmpty(strings.Split(claimData.Val()["channels"], ",")),
+			Channels: common.RemoveEmpty(strings.Split(claimData.Val()["state"], ",")),
 		}, nil
 	} else if jwtToken := c.Query("jwt"); jwtToken != "" && options.Jwt.JwtSecret != "" {
 		// Valid JWT (only enabled if `jwt_secret` is set)

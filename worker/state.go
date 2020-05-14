@@ -6,74 +6,98 @@ import (
 )
 
 type connectionsState struct {
-	Connections map[string]*SockConnection
-	Mutex       sync.Mutex
+	state map[string]*SockConnection
+	mutex sync.RWMutex
 }
 
 func (connections *connectionsState) Add(connection *SockConnection) {
-	connections.Mutex.Lock()
-	defer connections.Mutex.Unlock()
+	connections.mutex.Lock()
+	defer connections.mutex.Unlock()
 
-	connections.Connections[connection.Id] = connection
+	connections.state[connection.Id] = connection
 }
 
 func (connections *connectionsState) Remove(id string) {
-	connections.Mutex.Lock()
-	defer connections.Mutex.Unlock()
+	connections.mutex.Lock()
+	defer connections.mutex.Unlock()
 
-	delete(connections.Connections, id)
+	delete(connections.state, id)
+}
+
+func (connections *connectionsState) Get(id string) (*SockConnection, bool) {
+	connections.mutex.RLock()
+	defer connections.mutex.RUnlock()
+
+	connectionEntry, connectionExists := connections.state[id]
+	return connectionEntry, connectionExists
 }
 
 type usersState struct {
-	Users map[string][]string
-	Mutex sync.Mutex
+	state map[string][]string
+	mutex sync.RWMutex
 }
 
 func (users *usersState) Add(user string, connection string) {
-	users.Mutex.Lock()
-	defer users.Mutex.Unlock()
+	users.mutex.Lock()
+	defer users.mutex.Unlock()
 
-	usersEntry, usersExists := users.Users[user]
+	usersEntry, usersExists := users.state[user]
 	if usersExists {
-		users.Users[user] = append(usersEntry, connection)
+		users.state[user] = append(usersEntry, connection)
 	} else {
-		users.Users[user] = []string{connection}
+		users.state[user] = []string{connection}
 	}
 }
 
 func (users *usersState) Remove(user string, connection string) {
-	users.Mutex.Lock()
-	defer users.Mutex.Unlock()
+	users.mutex.Lock()
+	defer users.mutex.Unlock()
 
-	usersEntry, usersExists := users.Users[user]
+	usersEntry, usersExists := users.state[user]
 	if usersExists {
-		users.Users[user] = common.RemoveString(usersEntry, connection)
+		users.state[user] = common.RemoveString(usersEntry, connection)
 	}
 }
 
+func (users *usersState) Get(user string) ([]string, bool) {
+	users.mutex.RLock()
+	defer users.mutex.RUnlock()
+
+	userEntry, userExists := users.state[user]
+	return userEntry, userExists
+}
+
 type channelsState struct {
-	Channels map[string][]string
-	Mutex    sync.Mutex
+	state map[string][]string
+	mutex sync.RWMutex
 }
 
 func (channels *channelsState) Add(channel string, connection string) {
-	channels.Mutex.Lock()
-	defer channels.Mutex.Unlock()
+	channels.mutex.Lock()
+	defer channels.mutex.Unlock()
 
-	channelEntry, channelExists := channels.Channels[channel]
+	channelEntry, channelExists := channels.state[channel]
 	if channelExists {
-		channels.Channels[channel] = append(channelEntry, connection)
+		channels.state[channel] = append(channelEntry, connection)
 	} else {
-		channels.Channels[channel] = []string{connection}
+		channels.state[channel] = []string{connection}
 	}
 }
 
 func (channels *channelsState) Remove(channel string, connection string) {
-	channels.Mutex.Lock()
-	defer channels.Mutex.Unlock()
+	channels.mutex.Lock()
+	defer channels.mutex.Unlock()
 
-	channelEntry, channelExists := channels.Channels[channel]
+	channelEntry, channelExists := channels.state[channel]
 	if channelExists {
-		channels.Channels[channel] = common.RemoveString(channelEntry, connection)
+		channels.state[channel] = common.RemoveString(channelEntry, connection)
 	}
+}
+
+func (channels *channelsState) Get(channel string) ([]string, bool) {
+	channels.mutex.RLock()
+	defer channels.mutex.RUnlock()
+
+	channelEntry, channelExists := channels.state[channel]
+	return channelEntry, channelExists
 }
