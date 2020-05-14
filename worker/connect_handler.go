@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"log"
+	"go.uber.org/zap"
 	"strings"
 	"sync"
 	"time"
@@ -24,7 +24,9 @@ func connectHandler(c *gin.Context) {
 	// Upgrade to a WebSocket connection
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Println("Could not upgrade:", err)
+		logger.Warn("Could not upgrade request to WebSocket",
+			zap.Error(err),
+		)
 		return
 	}
 

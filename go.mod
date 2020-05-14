@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/spf13/viper v1.6.3
 	github.com/stretchr/testify v1.4.0
+	go.uber.org/zap v1.10.0
 	google.golang.org/protobuf v1.21.0
 )
 
