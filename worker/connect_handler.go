@@ -59,13 +59,13 @@ func connectHandler(c *gin.Context) {
 		"user":     connection.User,
 		"workerId": workerId,
 		"lastPing": time.Now().Format(time.RFC3339),
-		"state":    strings.Join(connection.Channels, ","),
+		"channels":    strings.Join(connection.Channels, ","),
 	}
 	if connection.Session != "" {
 		redisConnection["session"] = connection.Session
 	}
 	if len(connection.Channels) != 0 {
-		redisConnection["state"] = strings.Join(connection.Channels, ",")
+		redisConnection["channels"] = strings.Join(connection.Channels, ",")
 	}
 	redisClient.HSet("conn:"+connId, redisConnection)
 
