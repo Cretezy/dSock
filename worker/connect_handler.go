@@ -179,3 +179,10 @@ type SockConnection struct {
 	Channels     []string
 	lock         sync.Mutex
 }
+
+func (connection *SockConnection) SetChannels(channels []string) {
+	connection.lock.Lock()
+	defer connection.lock.Unlock()
+
+	connection.Channels = channels
+}

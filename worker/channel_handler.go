@@ -22,9 +22,7 @@ func handleChannel(channelAction *protos.ChannelAction) {
 	// Apply to all connections for target
 	for _, connection := range connections {
 		if channelAction.Type == protos.ChannelAction_SUBSCRIBE && !common.IncludesString(connection.Channels, channelAction.Channel) {
-			connection.lock.Lock()
-			connection.Channels = append(connection.Channels, channelAction.Channel)
-			connection.lock.Unlock()
+			connection.SetChannels(append(connection.Channels, channelAction.Channel))
 
 			channelEntry, channelExists := channels.Channels[channelAction.Channel]
 			if channelExists {
@@ -35,9 +33,7 @@ func handleChannel(channelAction *protos.ChannelAction) {
 
 			redisClient.SAdd("channel:"+channelAction.Channel, connection.Id)
 		} else if channelAction.Type == protos.ChannelAction_UNSUBSCRIBE && common.IncludesString(connection.Channels, channelAction.Channel) {
-			connection.lock.Lock()
-			connection.Channels = common.RemoveString(connection.Channels, channelAction.Channel)
-			connection.lock.Unlock()
+			connection.SetChannels(common.RemoveString(connection.Channels, channelAction.Channel))
 
 			channelEntry, channelExists := channels.Channels[channelAction.Channel]
 			if channelExists {
