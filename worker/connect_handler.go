@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/Cretezy/dSock/common"
 	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -42,24 +42,14 @@ func connectHandler(c *gin.Context) {
 		Session:      authentication.Session,
 		Sender:       sender,
 		CloseChannel: make(chan struct{}),
-		Channels:     authentication.Channels,
-	}
-	connections[connId] = &connection
-
-	usersEntry, userExists := users[connection.User]
-	if userExists {
-		users[connection.User] = append(usersEntry, connId)
-	} else {
-		users[connection.User] = []string{connId}
+		channels:     authentication.Channels,
 	}
 
-	for _, channel := range connection.Channels {
-		channelEntry, channelExists := channels[channel]
-		if channelExists {
-			channels[channel] = append(channelEntry, connId)
-		} else {
-			channels[channel] = []string{connId}
-		}
+	connections.Add(&connection)
+	users.Add(connection.User, connId)
+
+	for _, channel := range authentication.Channels {
+		channels.Add(channel, connId)
 
 		redisClient.SAdd("channel:"+channel, connId)
 	}
@@ -69,13 +59,13 @@ func connectHandler(c *gin.Context) {
 		"user":     connection.User,
 		"workerId": workerId,
 		"lastPing": time.Now().Format(time.RFC3339),
-		"channels": strings.Join(connection.Channels, ","),
+		"channels": strings.Join(authentication.Channels, ","),
 	}
 	if connection.Session != "" {
 		redisConnection["session"] = connection.Session
 	}
-	if len(connection.Channels) != 0 {
-		redisConnection["channels"] = strings.Join(connection.Channels, ",")
+	if len(authentication.Channels) != 0 {
+		redisConnection["channels"] = strings.Join(authentication.Channels, ",")
 	}
 	redisClient.HSet("conn:"+connId, redisConnection)
 
@@ -149,11 +139,12 @@ SendLoop:
 				redisClient.SRem("user-session:"+connection.User+"-"+connection.Session, connId)
 			}
 
-			delete(connections, connId)
-			users[connection.User] = common.RemoveString(users[connection.User], connId)
+			connections.Remove(connId)
 
-			for _, channel := range connection.Channels {
-				channels[channel] = common.RemoveString(channels[channel], connId)
+			users.Remove(connection.User, connId)
+
+			for _, channel := range connection.GetChannels() {
+				channels.Remove(channel, connId)
 
 				redisClient.SRem("channel:"+channel, connId)
 			}
@@ -173,5 +164,20 @@ type SockConnection struct {
 	Sender chan *protos.Message
 	/// Channel to close the connect. nil when connection is closed/closing
 	CloseChannel chan struct{}
-	Channels     []string
+	channels     []string
+	lock         sync.RWMutex
+}
+
+func (connection *SockConnection) SetChannels(channels []string) {
+	connection.lock.Lock()
+	defer connection.lock.Unlock()
+
+	connection.channels = channels
+}
+
+func (connection *SockConnection) GetChannels() []string {
+	connection.lock.RLock()
+	defer connection.lock.RUnlock()
+
+	return connection.channels
 }

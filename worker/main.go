@@ -28,9 +28,15 @@ var upgrader = websocket.Upgrader{
 
 var workerId = uuid.New().String()
 
-var connections = make(map[string]*SockConnection)
-var users = make(map[string][]string)
-var channels = make(map[string][]string)
+var users = usersState{
+	state: make(map[string][]string),
+}
+var channels = channelsState{
+	state: make(map[string][]string),
+}
+var connections = connectionsState{
+	state: make(map[string]*SockConnection),
+}
 
 var redisClient *redis.Client
 var options common.DSockOptions
@@ -159,7 +165,7 @@ func main() {
 	_ = channelSubscription.Close()
 
 	// Disconnect all connections
-	for _, connection := range connections {
+	for _, connection := range connections.state {
 		connection.CloseChannel <- struct{}{}
 	}
 
