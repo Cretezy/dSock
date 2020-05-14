@@ -38,9 +38,9 @@ var connections = connectionsState{
 	state: make(map[string]*SockConnection),
 }
 
-var redisClient *redis.Client
-var logger *zap.Logger
 var options *common.DSockOptions
+var logger *zap.Logger
+var redisClient *redis.Client
 
 func init() {
 	var err error

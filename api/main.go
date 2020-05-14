@@ -16,23 +16,28 @@ import (
 
 var redisClient *redis.Client
 
-var logger *zap.Logger
 var options *common.DSockOptions
+var logger *zap.Logger
 
 func init() {
 	var err error
-	logger, err = zap.NewProduction()
-	if err != nil {
-		println("Could not create logger")
-		panic(err)
-	}
 
 	options, err = common.GetOptions()
 
 	if err != nil {
-		logger.Fatal("Could not get options. Make sure your config is valid!",
-			zap.Error(err),
-		)
+		println("Could not get options. Make sure your config is valid!")
+		panic(err)
+	}
+
+	if options.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+
+	if err != nil {
+		println("Could not create logger")
+		panic(err)
 	}
 }
 
