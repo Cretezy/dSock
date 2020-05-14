@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -44,22 +45,29 @@ func connectHandler(c *gin.Context) {
 		CloseChannel: make(chan struct{}),
 		Channels:     authentication.Channels,
 	}
+
+	connectionsLock.Lock()
 	connections[connId] = &connection
+	connectionsLock.Unlock()
 
 	usersEntry, userExists := users[connection.User]
+	usersLock.Lock()
 	if userExists {
 		users[connection.User] = append(usersEntry, connId)
 	} else {
 		users[connection.User] = []string{connId}
 	}
+	usersLock.Unlock()
 
 	for _, channel := range connection.Channels {
 		channelEntry, channelExists := channels[channel]
+		channelsLock.Lock()
 		if channelExists {
 			channels[channel] = append(channelEntry, connId)
 		} else {
 			channels[channel] = []string{connId}
 		}
+		channelsLock.Unlock()
 
 		redisClient.SAdd("channel:"+channel, connId)
 	}
@@ -149,11 +157,18 @@ SendLoop:
 				redisClient.SRem("user-session:"+connection.User+"-"+connection.Session, connId)
 			}
 
+			connectionsLock.Lock()
 			delete(connections, connId)
+			connectionsLock.Unlock()
+
+			usersLock.Lock()
 			users[connection.User] = common.RemoveString(users[connection.User], connId)
+			usersLock.Unlock()
 
 			for _, channel := range connection.Channels {
+				channelsLock.Lock()
 				channels[channel] = common.RemoveString(channels[channel], connId)
+				channelsLock.Unlock()
 
 				redisClient.SRem("channel:"+channel, connId)
 			}
@@ -174,4 +189,5 @@ type SockConnection struct {
 	/// Channel to close the connect. nil when connection is closed/closing
 	CloseChannel chan struct{}
 	Channels     []string
+	lock         sync.Mutex
 }

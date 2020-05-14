@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -29,8 +30,13 @@ var upgrader = websocket.Upgrader{
 var workerId = uuid.New().String()
 
 var connections = make(map[string]*SockConnection)
+var connectionsLock sync.Mutex
+
 var users = make(map[string][]string)
+var usersLock sync.Mutex
+
 var channels = make(map[string][]string)
+var channelsLock sync.Mutex
 
 var redisClient *redis.Client
 var options common.DSockOptions
