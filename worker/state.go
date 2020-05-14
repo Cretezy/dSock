@@ -29,11 +29,26 @@ type usersState struct {
 	Mutex sync.Mutex
 }
 
-func (users *usersState) Set(user string, connections []string) {
+func (users *usersState) Add(user string, connection string) {
 	users.Mutex.Lock()
 	defer users.Mutex.Unlock()
 
-	users.Users[user] = connections
+	usersEntry, usersExists := users.Users[user]
+	if usersExists {
+		users.Users[user] = append(usersEntry, connection)
+	} else {
+		users.Users[user] = []string{connection}
+	}
+}
+
+func (users *usersState) Remove(user string, connection string) {
+	users.Mutex.Lock()
+	defer users.Mutex.Unlock()
+
+	usersEntry, usersExists := users.Users[user]
+	if usersExists {
+		users.Users[user] = common.RemoveString(usersEntry, connection)
+	}
 }
 
 type channelsState struct {
@@ -42,8 +57,8 @@ type channelsState struct {
 }
 
 func (channels *channelsState) Add(channel string, connection string) {
-	users.Mutex.Lock()
-	defer users.Mutex.Unlock()
+	channels.Mutex.Lock()
+	defer channels.Mutex.Unlock()
 
 	channelEntry, channelExists := channels.Channels[channel]
 	if channelExists {
@@ -54,8 +69,8 @@ func (channels *channelsState) Add(channel string, connection string) {
 }
 
 func (channels *channelsState) Remove(channel string, connection string) {
-	users.Mutex.Lock()
-	defer users.Mutex.Unlock()
+	channels.Mutex.Lock()
+	defer channels.Mutex.Unlock()
 
 	channelEntry, channelExists := channels.Channels[channel]
 	if channelExists {

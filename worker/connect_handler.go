@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/Cretezy/dSock/common"
 	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -47,13 +46,7 @@ func connectHandler(c *gin.Context) {
 	}
 
 	connections.Add(&connection)
-
-	usersEntry, userExists := users.Users[connection.User]
-	if userExists {
-		users.Set(connection.User, append(usersEntry, connId))
-	} else {
-		users.Set(connection.User, []string{connId})
-	}
+	users.Add(connection.User, connId)
 
 	for _, channel := range connection.Channels {
 		channels.Add(channel, connId)
@@ -148,7 +141,7 @@ SendLoop:
 
 			connections.Remove(connId)
 
-			users.Set(connection.User, common.RemoveString(users.Users[connection.User], connId))
+			users.Remove(connection.User, connId)
 
 			for _, channel := range connection.Channels {
 				channels.Remove(channel, connId)

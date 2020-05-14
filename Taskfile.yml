@@ -68,9 +68,9 @@ tasks:
 
   build:binaries:single:
     cmds:
-      - echo "Building API - Linux"
+      - echo "Building API"
       - cd api && go build -o ../build/api
-      - echo "Building worker - Linux"
+      - echo "Building worker"
       - cd worker && go build -o ../build/worker
 
   build:docker:
