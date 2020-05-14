@@ -46,17 +46,20 @@ func formatClaim(id string, claim map[string]string) gin.H {
 }
 
 func infoHandler(c *gin.Context) {
-	connId := c.Query("id")
-	user := c.Query("user")
-	session := c.Query("session")
-	channel := c.Query("channel")
+	resolveOptions := common.ResolveOptions{}
 
-	claimIds, apiError := resolveClaims(common.ResolveOptions{
-		Connection: connId,
-		User:       user,
-		Session:    session,
-		Channel:    channel,
-	})
+	err := c.BindQuery(&resolveOptions)
+	if err != nil {
+		apiError := &common.ApiError{
+			InternalError: err,
+			ErrorCode:     common.ErrorBindingQueryParams,
+			StatusCode:    400,
+		}
+		apiError.Send(c)
+		return
+	}
+
+	claimIds, apiError := resolveClaims(resolveOptions)
 	if apiError != nil {
 		apiError.Send(c)
 		return
@@ -116,8 +119,8 @@ func infoHandler(c *gin.Context) {
 	}
 
 	// Get connection(s)
-	if connId != "" {
-		connection := redisClient.HGetAll("conn:" + connId)
+	if resolveOptions.Connection != "" {
+		connection := redisClient.HGetAll("conn:" + resolveOptions.Connection)
 
 		if connection.Err() != nil {
 			apiError := common.ApiError{
@@ -141,11 +144,11 @@ func infoHandler(c *gin.Context) {
 
 		c.AbortWithStatusJSON(200, map[string]interface{}{
 			"success":     true,
-			"connections": []gin.H{formatConnection(connId, connection.Val())},
+			"connections": []gin.H{formatConnection(resolveOptions.Connection, connection.Val())},
 			"claims":      claims,
 		})
-	} else if user != "" {
-		user := redisClient.SMembers("user:" + user)
+	} else if resolveOptions.User != "" {
+		user := redisClient.SMembers("user:" + resolveOptions.User)
 
 		if user.Err() != nil {
 			apiError := common.ApiError{
@@ -202,7 +205,7 @@ func infoHandler(c *gin.Context) {
 				}
 
 				// Target specific session(s) for user
-				if session != "" && connection.Val()["session"] != session {
+				if resolveOptions.Session != "" && connection.Val()["session"] != resolveOptions.Session {
 					return
 				}
 
@@ -224,8 +227,8 @@ func infoHandler(c *gin.Context) {
 			"connections": connections,
 			"claims":      claims,
 		})
-	} else if channel != "" {
-		channel := redisClient.SMembers("channel:" + channel)
+	} else if resolveOptions.Channel != "" {
+		channel := redisClient.SMembers("channel:" + resolveOptions.Channel)
 
 		if channel.Err() != nil {
 			apiError := common.ApiError{

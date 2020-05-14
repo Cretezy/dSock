@@ -9,18 +9,20 @@ import (
 )
 
 func disconnectHandler(c *gin.Context) {
-	connId := c.Query("id")
-	user := c.Query("user")
-	session := c.Query("session")
-	channel := c.Query("channel")
-	keepClaims := c.Query("keepClaims") == "true"
+	resolveOptions := common.ResolveOptions{}
 
-	resolveOptions := common.ResolveOptions{
-		Connection: connId,
-		User:       user,
-		Session:    session,
-		Channel:    channel,
+	err := c.BindQuery(&resolveOptions)
+	if err != nil {
+		apiError := &common.ApiError{
+			InternalError: err,
+			ErrorCode:     common.ErrorBindingQueryParams,
+			StatusCode:    400,
+		}
+		apiError.Send(c)
+		return
 	}
+
+	keepClaims := c.Query("keepClaims") == "true"
 
 	// Get all worker IDs that the target is connected to
 	workerIds, apiError := resolveWorkers(resolveOptions)
@@ -44,12 +46,12 @@ func disconnectHandler(c *gin.Context) {
 			claimKeys[index] = "claim:" + claim
 		}
 
-		redisClient.SRem("claim-user:"+user, claimIds)
-		if session != "" {
-			redisClient.SRem("claim-user-session:"+user+"-"+session, claimIds)
+		redisClient.SRem("claim-user:"+resolveOptions.User, claimIds)
+		if resolveOptions.Session != "" {
+			redisClient.SRem("claim-user-session:"+resolveOptions.User+"-"+resolveOptions.Session, claimIds)
 		}
-		if channel != "" {
-			redisClient.SRem("claim-channel:"+channel, claimIds)
+		if resolveOptions.Channel != "" {
+			redisClient.SRem("claim-channel:"+resolveOptions.Channel, claimIds)
 		}
 
 		redisClient.Del(claimKeys...)
@@ -59,10 +61,10 @@ func disconnectHandler(c *gin.Context) {
 	message := &protos.Message{
 		Type: protos.Message_DISCONNECT,
 		Target: &protos.Target{
-			Connection: connId,
-			User:       user,
-			Session:    session,
-			Channel:    channel,
+			Connection: resolveOptions.Connection,
+			User:       resolveOptions.User,
+			Session:    resolveOptions.Session,
+			Channel:    resolveOptions.Channel,
 		},
 	}
 

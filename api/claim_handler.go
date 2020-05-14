@@ -8,13 +8,34 @@ import (
 	"time"
 )
 
+type claimOptions struct {
+	Id         string `form:"id"`
+	User       string `form:"user"`
+	Channels   string `form:"channels"`
+	Session    string `form:"session"`
+	Expiration string `form:"expiration"`
+	Duration   string `form:"duration"`
+}
+
 func createClaimHandler(c *gin.Context) {
-	user := c.Query("user")
+	claimOptions := claimOptions{}
+
+	err := c.BindQuery(&claimOptions)
+	if err != nil {
+		apiError := &common.ApiError{
+			InternalError: err,
+			ErrorCode:     common.ErrorBindingQueryParams,
+			StatusCode:    400,
+		}
+		apiError.Send(c)
+		return
+	}
+
 	channels := common.UniqueString(common.RemoveEmpty(
-		strings.Split(c.Query("channels"), ","),
+		strings.Split(claimOptions.Channels, ","),
 	))
 
-	if user == "" {
+	if claimOptions.User == "" {
 		apiError := common.ApiError{
 			ErrorCode:  common.ErrorUserIdRequired,
 			StatusCode: 400,
@@ -23,13 +44,11 @@ func createClaimHandler(c *gin.Context) {
 		return
 	}
 
-	session := c.Query("session")
-
 	// Parses expiration time from expiration or duration
 	var expirationTime time.Time
 
-	if c.Query("expiration") != "" {
-		expiration, err := strconv.Atoi(c.Query("expiration"))
+	if claimOptions.Expiration != "" {
+		expiration, err := strconv.Atoi(claimOptions.Expiration)
 
 		if err != nil {
 			apiError := common.ApiError{
@@ -59,8 +78,8 @@ func createClaimHandler(c *gin.Context) {
 			apiError.Send(c)
 			return
 		}
-	} else if c.Query("duration") != "" {
-		duration, err := strconv.Atoi(c.Query("duration"))
+	} else if claimOptions.Duration != "" {
+		duration, err := strconv.Atoi(claimOptions.Duration)
 
 		if err != nil {
 			apiError := common.ApiError{
@@ -88,10 +107,8 @@ func createClaimHandler(c *gin.Context) {
 	// Gets or generates claim ID
 	var id string
 
-	if c.Query("id") != "" {
-		id = c.Query("id")
-
-		exists := redisClient.Exists("claim:" + id)
+	if claimOptions.Id != "" {
+		exists := redisClient.Exists("claim:" + claimOptions.Id)
 
 		if exists.Err() != nil {
 			apiError := common.ApiError{
@@ -116,12 +133,12 @@ func createClaimHandler(c *gin.Context) {
 
 	// Creates claim in Redis
 	claim := map[string]interface{}{
-		"user":       user,
+		"user":       claimOptions.User,
 		"expiration": expirationTime.Format(time.RFC3339),
 	}
 
-	if session != "" {
-		claim["session"] = session
+	if claimOptions.Session != "" {
+		claim["session"] = claimOptions.Session
 	}
 
 	if len(channels) != 0 {
@@ -133,11 +150,11 @@ func createClaimHandler(c *gin.Context) {
 	redisClient.ExpireAt(claimKey, expirationTime)
 
 	// Create user/session claim
-	userKey := "claim-user:" + user
+	userKey := "claim-user:" + claimOptions.User
 	redisClient.SAdd(userKey, id, 0)
 
-	if session != "" {
-		userSessionKey := "claim-user-session:" + user + "-" + session
+	if claimOptions.Session != "" {
+		userSessionKey := "claim-user-session:" + claimOptions.User + "-" + claimOptions.Session
 		redisClient.SAdd(userSessionKey, id, 0)
 	}
 	for _, channel := range channels {
@@ -148,12 +165,12 @@ func createClaimHandler(c *gin.Context) {
 	claimResponse := gin.H{
 		"id":         id,
 		"expiration": expirationTime.Unix(),
-		"user":       user,
+		"user":       claimOptions.User,
 		"channels":   channels,
 	}
 
-	if session != "" {
-		claimResponse["session"] = session
+	if claimOptions.Session != "" {
+		claimResponse["session"] = claimOptions.Session
 	}
 
 	if len(channels) != 0 {
