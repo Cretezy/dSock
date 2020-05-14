@@ -24,21 +24,13 @@ func handleChannel(channelAction *protos.ChannelAction) {
 		if channelAction.Type == protos.ChannelAction_SUBSCRIBE && !common.IncludesString(connection.Channels, channelAction.Channel) {
 			connection.SetChannels(append(connection.Channels, channelAction.Channel))
 
-			channelEntry, channelExists := channels.Channels[channelAction.Channel]
-			if channelExists {
-				channels.Set(channelAction.Channel, append(channelEntry, connection.Id))
-			} else {
-				channels.Set(channelAction.Channel, []string{connection.Id})
-			}
+			channels.Add(channelAction.Channel, connection.Id)
 
 			redisClient.SAdd("channel:"+channelAction.Channel, connection.Id)
 		} else if channelAction.Type == protos.ChannelAction_UNSUBSCRIBE && common.IncludesString(connection.Channels, channelAction.Channel) {
 			connection.SetChannels(common.RemoveString(connection.Channels, channelAction.Channel))
 
-			channelEntry, channelExists := channels.Channels[channelAction.Channel]
-			if channelExists {
-				channels.Set(channelAction.Channel, common.RemoveString(channelEntry, connection.Id))
-			}
+			channels.Remove(channelAction.Channel, connection.Id)
 
 			redisClient.SRem("channel:"+channelAction.Channel, connection.Id)
 		} else {

@@ -56,12 +56,7 @@ func connectHandler(c *gin.Context) {
 	}
 
 	for _, channel := range connection.Channels {
-		channelEntry, channelExists := channels.Channels[channel]
-		if channelExists {
-			channels.Set(channel, append(channelEntry, connId))
-		} else {
-			channels.Set(channel, []string{connId})
-		}
+		channels.Add(channel, connId)
 
 		redisClient.SAdd("channel:"+channel, connId)
 	}
@@ -156,7 +151,7 @@ SendLoop:
 			users.Set(connection.User, common.RemoveString(users.Users[connection.User], connId))
 
 			for _, channel := range connection.Channels {
-				channels.Set(channel, common.RemoveString(channels.Channels[channel], connId))
+				channels.Remove(channel, connId)
 
 				redisClient.SRem("channel:"+channel, connId)
 			}

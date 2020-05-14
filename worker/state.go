@@ -1,6 +1,9 @@
 package main
 
-import "sync"
+import (
+	"github.com/Cretezy/dSock/common"
+	"sync"
+)
 
 type connectionsState struct {
 	Connections map[string]*SockConnection
@@ -38,9 +41,24 @@ type channelsState struct {
 	Mutex    sync.Mutex
 }
 
-func (channels *channelsState) Set(channel string, connections []string) {
+func (channels *channelsState) Add(channel string, connection string) {
 	users.Mutex.Lock()
 	defer users.Mutex.Unlock()
 
-	channels.Channels[channel] = connections
+	channelEntry, channelExists := channels.Channels[channel]
+	if channelExists {
+		channels.Channels[channel] = append(channelEntry, connection)
+	} else {
+		channels.Channels[channel] = []string{connection}
+	}
+}
+
+func (channels *channelsState) Remove(channel string, connection string) {
+	users.Mutex.Lock()
+	defer users.Mutex.Unlock()
+
+	channelEntry, channelExists := channels.Channels[channel]
+	if channelExists {
+		channels.Channels[channel] = common.RemoveString(channelEntry, connection)
+	}
 }
