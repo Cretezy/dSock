@@ -2,6 +2,7 @@
 
 - Improve query binding
 - Add locking for concurrent state (thanks a lot [@abdullah-aghayan](https://github.com/abdullah-aghayan)!)
+- Change logger to Zap
 
 ## v0.3.0 - 2020-05-08
 

@@ -110,4 +110,5 @@ func main() {
 	}
 
 	logger.Info("Stopped")
+	_ = logger.Sync()
 }

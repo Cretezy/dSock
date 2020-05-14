@@ -204,4 +204,5 @@ func main() {
 	time.Sleep(time.Second)
 
 	logger.Info("Stopped")
+	_ = logger.Sync()
 }
