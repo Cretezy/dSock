@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Improve query binding
+- Add locking for concurrent state
 
 ## v0.3.0 - 2020-05-08
 

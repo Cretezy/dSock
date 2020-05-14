@@ -28,6 +28,16 @@ var upgrader = websocket.Upgrader{
 
 var workerId = uuid.New().String()
 
+var users = usersState{
+	Users: make(map[string][]string),
+}
+var channels = channelsState{
+	Channels: make(map[string][]string),
+}
+var connections = connectionsState{
+	Connections: make(map[string]*SockConnection),
+}
+
 var redisClient *redis.Client
 var options common.DSockOptions
 
