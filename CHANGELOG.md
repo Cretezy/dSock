@@ -1,4 +1,4 @@
-## Unreleased
+## v0.3.1 - 2020-06-14
 
 - Improve query binding
 - Add locking for concurrent state (thanks a lot [@abdullah-aghayan](https://github.com/abdullah-aghayan)!)
