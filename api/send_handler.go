@@ -3,11 +3,21 @@ package main
 import (
 	"github.com/Cretezy/dSock/common"
 	"github.com/Cretezy/dSock/common/protos"
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"io/ioutil"
 )
 
 func sendHandler(c *gin.Context) {
+	logger.Debug("Getting send request",
+		zap.String("requestId", requestid.Get(c)),
+		zap.String("id", c.Query("id")),
+		zap.String("user", c.Query("user")),
+		zap.String("session", c.Query("session")),
+		zap.String("channel", c.Query("channel")),
+	)
+
 	resolveOptions := common.ResolveOptions{}
 
 	err := c.BindQuery(&resolveOptions)
@@ -69,6 +79,16 @@ func sendHandler(c *gin.Context) {
 		apiError.Send(c)
 		return
 	}
+
+	logger.Debug("Sent message",
+		zap.String("requestId", requestid.Get(c)),
+		zap.Strings("workerIds", workerIds),
+		zap.String("id", resolveOptions.Connection),
+		zap.String("user", resolveOptions.User),
+		zap.String("session", resolveOptions.Session),
+		zap.String("channel", resolveOptions.Channel),
+		zap.Int("bodyLength", len(body)),
+	)
 
 	c.AbortWithStatusJSON(200, map[string]interface{}{
 		"success": true,

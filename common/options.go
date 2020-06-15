@@ -1,10 +1,8 @@
 package common
 
 import (
-	"fmt"
 	"github.com/go-redis/redis/v7"
 	"github.com/spf13/viper"
-	"log"
 	"os"
 	"strings"
 )
@@ -18,6 +16,7 @@ type DSockOptions struct {
 	Address      string
 	QuitChannel  chan struct{}
 	Debug        bool
+	LogRequests  bool
 	/// Token for your API -> dSock and between dSock services
 	Token string
 	/// JWT parsing/verifying options
@@ -26,7 +25,7 @@ type DSockOptions struct {
 	DefaultChannels []string
 }
 
-func SetupConfig() {
+func SetupConfig() error {
 	viper.SetConfigName("config")
 	viper.SetEnvPrefix("DSOCK")
 	viper.AutomaticEnv()
@@ -48,21 +47,24 @@ func SetupConfig() {
 
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Println("No config found, writing new config.")
-
 			err = viper.SafeWriteConfigAs("config.toml")
 
 			if err != nil {
-				panic(fmt.Errorf("Fatal error saving default config file: %s \n", err))
+				return err
 			}
 		} else {
-			panic(fmt.Errorf("Fatal error reading config file: %s \n", err))
+			return err
 		}
 	}
+
+	return nil
 }
 
-func GetOptions() DSockOptions {
-	SetupConfig()
+func GetOptions() (*DSockOptions, error) {
+	err := SetupConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	port := os.Getenv("PORT")
 
@@ -72,7 +74,9 @@ func GetOptions() DSockOptions {
 		address = viper.GetString("address")
 	}
 
-	return DSockOptions{
+	return &DSockOptions{
+		Debug:       viper.GetBool("debug"),
+		LogRequests: viper.GetBool("log_requests"),
 		RedisOptions: &redis.Options{
 			Addr:     viper.GetString("redis_host"),
 			Password: viper.GetString("redis_password"),
@@ -87,5 +91,5 @@ func GetOptions() DSockOptions {
 		DefaultChannels: UniqueString(RemoveEmpty(
 			strings.Split(viper.GetString("default_channels"), ","),
 		)),
-	}
+	}, nil
 }

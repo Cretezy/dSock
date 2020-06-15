@@ -6,7 +6,7 @@ import (
 	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v7"
-	"log"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,21 +16,44 @@ import (
 
 var redisClient *redis.Client
 
-var options common.DSockOptions
+var options *common.DSockOptions
+var logger *zap.Logger
 
 func init() {
-	options = common.GetOptions()
+	var err error
+
+	options, err = common.GetOptions()
+
+	if err != nil {
+		println("Could not get options. Make sure your config is valid!")
+		panic(err)
+	}
+
+	if options.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+
+	if err != nil {
+		println("Could not create logger")
+		panic(err)
+	}
 }
 
 func main() {
-	log.Printf("Starting dSock API %s\n", common.DSockVersion)
+	logger.Info("Starting dSock API",
+		zap.String("version", common.DSockVersion),
+	)
 
 	// Setup application
 	redisClient = redis.NewClient(options.RedisOptions)
 
 	_, err := redisClient.Ping().Result()
 	if err != nil {
-		panic(err)
+		logger.Error("Could not connect to Redis (ping)",
+			zap.Error(err),
+		)
 	}
 
 	if options.Debug {
@@ -39,7 +62,8 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router := gin.Default()
+	router := common.NewGinEngine(logger, options)
+	router.Use(common.RequestIdMiddleware)
 	router.Use(common.TokenMiddleware(options.Token))
 
 	router.POST(common.PathSend, sendHandler)
@@ -57,11 +81,16 @@ func main() {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed listening: %s\n", err)
+			logger.Error("Failed listening",
+				zap.Error(err),
+			)
+			options.QuitChannel <- struct{}{}
 		}
 	}()
 
-	log.Printf("Starting on: %s\n", options.Address)
+	logger.Info("Listening",
+		zap.String("address", options.Address),
+	)
 
 	signalQuit := make(chan os.Signal, 1)
 
@@ -76,13 +105,16 @@ func main() {
 	signalQuit = nil
 
 	// Server shutdown
-	log.Print("Shutting server down...\n")
+	logger.Info("Shutting down")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Error during server shutdown: %s\n", err)
+		logger.Error("Error during server shutdown",
+			zap.Error(err),
+		)
 	}
 
-	log.Println("Server stopped")
+	logger.Info("Stopped")
+	_ = logger.Sync()
 }
