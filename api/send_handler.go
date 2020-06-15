@@ -80,7 +80,7 @@ func sendHandler(c *gin.Context) {
 		return
 	}
 
-	logger.Debug("Disconnected",
+	logger.Debug("Sent message",
 		zap.String("requestId", requestid.Get(c)),
 		zap.Strings("workerIds", workerIds),
 		zap.String("id", resolveOptions.Connection),

@@ -137,6 +137,17 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 			return
 		}
 
+		logger.Debug("Set channel",
+			zap.String("requestId", requestid.Get(c)),
+			zap.String("action", actionTypeName[actionType]),
+			zap.String("id", resolveOptions.Connection),
+			zap.String("user", resolveOptions.User),
+			zap.String("session", resolveOptions.Session),
+			zap.String("channel", resolveOptions.Channel),
+			zap.Bool("ignoreClaims", ignoreClaims),
+			zap.String("channelChange", channelChange),
+		)
+
 		c.AbortWithStatusJSON(200, map[string]interface{}{
 			"success": true,
 		})
