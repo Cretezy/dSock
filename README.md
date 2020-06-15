@@ -116,6 +116,8 @@ dSock can be configured using a config file or using environment variables.
 - `DSOCK_DEFAULT_CHANNELS` (`default_channels`, comma-delimited string, optional): When set, clients will be automatically subscribed to these channels
 - `DSOCK_JWT_SECRET` (`jwt_secret`, string, optional): When set, enables JWT authentication
 - `DSOCK_DEBUG` (`debug`, boolean): Enables debugging, useful for development. Defaults to `false`
+- `DSOCK_LOG_REQUESTS` (`log_requests`, boolean): Enables request logging. Defaults to `false`
+
 You can write your config file in TOML (recommended), JSON, YAML, or any format supported by [viper](https://github.com/spf13/viper)
 
 Configs are loaded from (in order):

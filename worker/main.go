@@ -87,7 +87,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router := common.NewGinEngine(logger, options.Debug)
+	router := common.NewGinEngine(logger, options)
 	router.Use(common.RequestIdMiddleware)
 
 	router.GET(common.PathConnect, connectHandler)

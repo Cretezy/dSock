@@ -16,6 +16,7 @@ type DSockOptions struct {
 	Address      string
 	QuitChannel  chan struct{}
 	Debug        bool
+	LogRequests  bool
 	/// Token for your API -> dSock and between dSock services
 	Token string
 	/// JWT parsing/verifying options
@@ -74,7 +75,8 @@ func GetOptions() (*DSockOptions, error) {
 	}
 
 	return &DSockOptions{
-		Debug: viper.GetBool("debug"),
+		Debug:       viper.GetBool("debug"),
+		LogRequests: viper.GetBool("log_requests"),
 		RedisOptions: &redis.Options{
 			Addr:     viper.GetString("redis_host"),
 			Password: viper.GetString("redis_password"),

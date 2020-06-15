@@ -7,9 +7,11 @@ import (
 )
 import "github.com/gin-contrib/zap"
 
-func NewGinEngine(logger *zap.Logger, stack bool) *gin.Engine {
+func NewGinEngine(logger *zap.Logger, options *DSockOptions) *gin.Engine {
 	engine := gin.New()
-	engine.Use(ginzap.Ginzap(logger, time.RFC3339, true))
-	engine.Use(ginzap.RecoveryWithZap(logger, stack))
+	if options.LogRequests {
+		engine.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+	}
+	engine.Use(ginzap.RecoveryWithZap(logger, options.Debug))
 	return engine
 }

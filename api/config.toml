@@ -1,5 +1,6 @@
 address = ""
 debug = true
+log_requests = true
 redis_db = 0
 redis_host = "redis:6379"
 redis_password = ""
