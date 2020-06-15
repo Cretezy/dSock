@@ -74,6 +74,7 @@ func GetOptions() (*DSockOptions, error) {
 	}
 
 	return &DSockOptions{
+		Debug: viper.GetBool("debug"),
 		RedisOptions: &redis.Options{
 			Addr:     viper.GetString("redis_host"),
 			Password: viper.GetString("redis_password"),
