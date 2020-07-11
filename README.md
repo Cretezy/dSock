@@ -114,7 +114,9 @@ dSock can be configured using a config file or using environment variables.
   - `DSOCK_REDIS_PASSWORD` (`redis_password`, string): Redis password. Defaults to no password
   - `DSOCK_REDIS_DB` (`redis_db`, integer): Redis database. Defaults to `0`
 - `DSOCK_DEFAULT_CHANNELS` (`default_channels`, comma-delimited string, optional): When set, clients will be automatically subscribed to these channels
-- `DSOCK_JWT_SECRET` (`jwt_secret`, string, optional): When set, enables JWT authentication
+- Authentication:
+  - `DSOCK_TOKEN` (`token`, string): Authentication token to do requests to the API
+  - `DSOCK_JWT_SECRET` (`jwt_secret`, string, optional): When set, enables JWT authentication
 - `DSOCK_DEBUG` (`debug`, boolean): Enables debugging, useful for development. Defaults to `false`
 - `DSOCK_LOG_REQUESTS` (`log_requests`, boolean): Enables request logging. Defaults to `false`
 
