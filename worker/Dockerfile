@@ -22,6 +22,7 @@ FROM development AS release_builder
 
 COPY --from=development /app /app
 
+ENV CGO_ENABLED=0
 RUN go build -o build/app -ldflags "-s -w"
 
 
@@ -33,4 +34,4 @@ COPY --from=release_builder /app/worker/build/app /app
 ENV PORT 80
 EXPOSE 80
 
-ENTRYPOINT "/app"
+ENTRYPOINT ["/app"]

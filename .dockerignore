@@ -1,2 +1,4 @@
 build
 gin-bin
+Dockerfile
+.dockerignore
