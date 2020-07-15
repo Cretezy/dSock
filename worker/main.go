@@ -90,6 +90,7 @@ func main() {
 	router := common.NewGinEngine(logger, options)
 	router.Use(common.RequestIdMiddleware)
 
+	router.Any(common.PathPing, common.PingHandler)
 	router.GET(common.PathConnect, connectHandler)
 
 	// Start HTTP server

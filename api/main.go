@@ -66,6 +66,7 @@ func main() {
 	router.Use(common.RequestIdMiddleware)
 	router.Use(common.TokenMiddleware(options.Token))
 
+	router.Any(common.PathPing, common.PingHandler)
 	router.POST(common.PathSend, sendHandler)
 	router.POST(common.PathDisconnect, disconnectHandler)
 	router.POST(common.PathClaim, createClaimHandler)

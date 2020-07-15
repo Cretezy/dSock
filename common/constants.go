@@ -1,6 +1,7 @@
 package common
 
 var (
+	PathPing               = "/ping"
 	PathSend               = "/send"
 	PathConnect            = "/connect"
 	PathClaim              = "/claim"

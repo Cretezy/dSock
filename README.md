@@ -475,6 +475,10 @@ It is expected that the API and worker nodes are behind load-balancers, which wo
 
 If you need TLS, you can either add a TLS-terminating load-balancer, or a reverse proxy (such as nginx or Caddy).
 
+**How can I do a health-check on dSock?**
+
+You can use the `/ping` endpoint on the API & worker to monitor if the service is up. It will response `pong`.
+
 ## Development
 
 ### Setup

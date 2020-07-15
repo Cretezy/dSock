@@ -1,3 +1,7 @@
+## v0.3.3 - 2020-07-15
+
+- Add `/ping` endpoint on API & worker
+
 ## v0.3.2 - 2020-07-12
 
 - Rebuild with fixed Docker images
