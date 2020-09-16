@@ -1,6 +1,7 @@
 package dsock_test
 
 import (
+	dsock "github.com/Cretezy/dSock-go"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"net/http"
@@ -26,28 +27,24 @@ func checkConnectionError(suite suite.Suite, err error, resp *http.Response) boo
 	return true
 }
 
-func checkRequestError(suite suite.Suite, err error, body map[string]interface{}, during string) bool {
+func checkRequestError(suite suite.Suite, err error, during string) bool {
 	if !suite.NoErrorf(err, "Error during %s", during) {
-		return false
-	}
-
-	if !suite.Equalf(true, body["success"], "Application error during %s (%s)", during, body["errorCode"]) {
 		return false
 	}
 
 	return true
 }
 
-func checkRequestNoError(suite suite.Suite, err error, body map[string]interface{}, errorCode, during string) bool {
+func checkRequestNoError(suite suite.Suite, err error, errorCode, during string) bool {
+	if dsockErr, ok := err.(*dsock.DSockError); ok {
+		if !suite.Equalf(errorCode, dsockErr.Code, "Incorrect error code") {
+			return false
+		}
+
+		return true
+	}
+
 	if !suite.NoErrorf(err, "Error during %s", during) {
-		return false
-	}
-
-	if !suite.Equalf(false, body["success"], "Application succeeded during %s when expecting %s", during, errorCode) {
-		return false
-	}
-
-	if !suite.Equalf(errorCode, body["errorCode"], "Incorrect error code") {
 		return false
 	}
 

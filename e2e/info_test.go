@@ -1,6 +1,7 @@
 package dsock_test
 
 import (
+	dsock "github.com/Cretezy/dSock-go"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -15,260 +16,254 @@ func TestInfoSuite(t *testing.T) {
 }
 
 func (suite *InfoSuite) TestInfoClaim() {
-	claim, err := createClaim(claimOptions{
+	claim, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:       "info",
 		Session:    "claim",
 		Expiration: 2147485545,
 	})
-	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+	if !checkRequestError(suite.Suite, err, "claim creation") {
 		return
 	}
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			User:    "info",
 			Session: "claim",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	infoClaims := info["claims"].([]interface{})
+	infoClaims := info.Claims
 
 	if !suite.Len(infoClaims, 1, "Incorrect number of claims") {
 		return
 	}
 
-	claimData := claim["claim"].(map[string]interface{})
-	infoClaimData := infoClaims[0].(map[string]interface{})
+	infoClaim := infoClaims[0]
 
-	if !suite.Equal(claimData["id"], infoClaimData["id"], "Info claim ID doesn't match claim") {
-		return
-	}
-
-	if !suite.Equal("info", claimData["user"], "Incorrect claim user") {
-		return
-	}
-	if !suite.Equal("info", infoClaimData["user"], "Incorrect info claim user") {
+	if !suite.Equal(claim.Id, infoClaim.Id, "Info claim ID doesn't match claim") {
 		return
 	}
 
-	if !suite.Equal("claim", claimData["session"], "Incorrect claim user session") {
+	if !suite.Equal("info", claim.User, "Incorrect claim user") {
 		return
 	}
-	if !suite.Equal("claim", infoClaimData["session"], "Incorrect info claim user session") {
+	if !suite.Equal("info", infoClaim.User, "Incorrect info claim user") {
+		return
+	}
+
+	if !suite.Equal("claim", claim.Session, "Incorrect claim user session") {
+		return
+	}
+	if !suite.Equal("claim", infoClaim.Session, "Incorrect info claim user session") {
 		return
 	}
 
 	// Has to do some weird casting
-	if !suite.Equal(2147485545, int(infoClaimData["expiration"].(float64)), "Info claim expiration doesn't match") {
+	if !suite.Equal(2147485545, infoClaim.Expiration, "Info claim expiration doesn't match") {
 		return
 	}
 }
 
 func (suite *InfoSuite) TestInfoClaimInvalidExpiration() {
-	claim, err := createClaim(claimOptions{
+	_, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:       "info",
 		Session:    "invalid_expiration",
 		Expiration: 1,
 	})
-	if !checkRequestNoError(suite.Suite, err, claim, "INVALID_EXPIRATION", "claim creation") {
+	if !checkRequestNoError(suite.Suite, err, "INVALID_EXPIRATION", "claim creation") {
 		return
 	}
 }
 
 func (suite *InfoSuite) TestInfoClaimNegativeExpiration() {
-	claim, err := createClaim(claimOptions{
+	_, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:       "info",
 		Session:    "negative_expiration",
 		Expiration: -1,
 	})
-	if !checkRequestNoError(suite.Suite, err, claim, "NEGATIVE_EXPIRATION", "claim creation") {
+	if !checkRequestNoError(suite.Suite, err, "NEGATIVE_EXPIRATION", "claim creation") {
 		return
 	}
 }
 
 func (suite *InfoSuite) TestInfoClaimNegativeDuration() {
-	claim, err := createClaim(claimOptions{
+	_, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:     "info",
 		Session:  "negative_duration",
 		Duration: -1,
 	})
-	if !checkRequestNoError(suite.Suite, err, claim, "NEGATIVE_DURATION", "claim creation") {
+	if !checkRequestNoError(suite.Suite, err, "NEGATIVE_DURATION", "claim creation") {
 		return
 	}
 }
 
 func (suite *InfoSuite) TestInfoConnection() {
-	claim, err := createClaim(claimOptions{
+	claim, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:    "info",
 		Session: "connection",
 	})
-	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+	if !checkRequestError(suite.Suite, err, "claim creation") {
 		return
 	}
 
-	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim.Id, nil)
 	if !checkConnectionError(suite.Suite, err, resp) {
 		return
 	}
 
 	defer conn.Close()
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			User:    "info",
 			Session: "connection",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	infoConnections := info["connections"].([]interface{})
+	infoConnections := info.Connections
 	if !suite.Len(infoConnections, 1, "Incorrect number of connections") {
 		return
 	}
 
-	claimData := claim["claim"].(map[string]interface{})
-	infoConnectionData := infoConnections[0].(map[string]interface{})
+	infoConnection := infoConnections[0]
 
-	if !suite.Equal("info", claimData["user"], "Incorrect claim user") {
+	if !suite.Equal("info", claim.User, "Incorrect claim user") {
 		return
 	}
-	if !suite.Equal("info", infoConnectionData["user"], "Incorrect connection user") {
+	if !suite.Equal("info", infoConnection.User, "Incorrect connection user") {
 		return
 	}
 
-	if !suite.Equal("connection", claimData["session"], "Incorrect claim user session") {
+	if !suite.Equal("connection", claim.Session, "Incorrect claim user session") {
 		return
 	}
-	if !suite.Equal("connection", infoConnectionData["session"], "Incorrect connection user session") {
+	if !suite.Equal("connection", infoConnection.Session, "Incorrect connection user session") {
 		return
 	}
 }
 
 func (suite *InfoSuite) TestInfoMissing() {
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			User:    "info",
 			Session: "missing",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	infoClaims := info["claims"].([]interface{})
-	if !suite.Len(infoClaims, 0, "Incorrect number of claims") {
+	if !suite.Len(info.Claims, 0, "Incorrect number of claims") {
 		return
 	}
 
-	infoConnections := info["connections"].([]interface{})
-	if !suite.Len(infoConnections, 0, "Incorrect number of connections") {
+	if !suite.Len(info.Connections, 0, "Incorrect number of connections") {
 		return
 	}
 }
 
 func (suite *InfoSuite) TestInfoNoTarget() {
-	info, err := getInfo(infoOptions{})
-	if !checkRequestNoError(suite.Suite, err, info, "MISSING_TARGET", "getting info") {
+	_, err := dSockClient.GetInfo(dsock.GetInfoOptions{})
+	if !checkRequestNoError(suite.Suite, err, "MISSING_TARGET", "getting info") {
 		return
 	}
 }
 
 func (suite *InfoSuite) TestInfoChannel() {
-	claim, err := createClaim(claimOptions{
+	claim, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:     "info",
 		Session:  "channel",
 		Channels: []string{"info_channel"},
 	})
-	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+	if !checkRequestError(suite.Suite, err, "claim creation") {
 		return
 	}
 
-	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim.Id, nil)
 	if !checkConnectionError(suite.Suite, err, resp) {
 		return
 	}
 
 	defer conn.Close()
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			Channel: "info_channel",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	infoConnections := info["connections"].([]interface{})
+	infoConnections := info.Connections
 	if !suite.Len(infoConnections, 1, "Incorrect number of connections") {
 		return
 	}
 
-	claimData := claim["claim"].(map[string]interface{})
-	infoConnectionData := infoConnections[0].(map[string]interface{})
+	infoConnection := infoConnections[0]
 
-	if !suite.Equal("info", claimData["user"], "Incorrect claim user") {
+	if !suite.Equal("info", claim.User, "Incorrect claim user") {
 		return
 	}
-	if !suite.Equal("info", infoConnectionData["user"], "Incorrect connection user") {
+	if !suite.Equal("info", infoConnection.User, "Incorrect connection user") {
 		return
 	}
 
-	if !suite.Equal([]string{"info_channel"}, interfaceToStringSlice(claimData["channels"]), "Incorrect claim channels") {
+	if !suite.Equal([]string{"info_channel"}, interfaceToStringSlice(claim.Channels), "Incorrect claim channels") {
 		return
 	}
 
 	// Includes default_channels in info
-	if !suite.Equal([]string{"info_channel", "global"}, interfaceToStringSlice(infoConnectionData["channels"]), "Incorrect connection channels") {
+	if !suite.Equal([]string{"info_channel", "global"}, interfaceToStringSlice(infoConnection.Channels), "Incorrect connection channels") {
 		return
 	}
 }
 
 func (suite *InfoSuite) TestInfoChannelClaim() {
-	claim, err := createClaim(claimOptions{
+	claim, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:     "info",
 		Session:  "channel_claim",
 		Channels: []string{"info_channel_claim"},
 	})
-	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+	if !checkRequestError(suite.Suite, err, "claim creation") {
 		return
 	}
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			Channel: "info_channel_claim",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	infoClaims := info["claims"].([]interface{})
+	infoClaims := info.Claims
 	if !suite.Len(infoClaims, 1, "Incorrect number of claims") {
 		return
 	}
 
-	claimData := claim["claim"].(map[string]interface{})
-	infoClaimData := infoClaims[0].(map[string]interface{})
+	infoClaim := infoClaims[0]
 
-	if !suite.Equal("info", claimData["user"], "Incorrect claim user") {
+	if !suite.Equal("info", claim.User, "Incorrect claim user") {
 		return
 	}
-	if !suite.Equal("info", infoClaimData["user"], "Incorrect info claim user") {
+	if !suite.Equal("info", infoClaim.User, "Incorrect info claim user") {
 		return
 	}
 
-	if !suite.Equal([]string{"info_channel_claim"}, interfaceToStringSlice(claimData["channels"]), "Incorrect claim channels") {
+	if !suite.Equal([]string{"info_channel_claim"}, interfaceToStringSlice(claim.Channels), "Incorrect claim channels") {
 		return
 	}
 
 	// Includes default_channels in info
-	if !suite.Equal([]string{"info_channel_claim"}, interfaceToStringSlice(infoClaimData["channels"]), "Incorrect info claim channels") {
+	if !suite.Equal([]string{"info_channel_claim"}, interfaceToStringSlice(infoClaim.Channels), "Incorrect info claim channels") {
 		return
 	}
 }

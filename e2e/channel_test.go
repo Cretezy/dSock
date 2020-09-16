@@ -1,6 +1,7 @@
 package dsock_test
 
 import (
+	"github.com/Cretezy/dSock-go"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -16,228 +17,224 @@ func TestChannelSuite(t *testing.T) {
 }
 
 func (suite *ChannelSuite) TestChannelSubscribe() {
-	claim, err := createClaim(claimOptions{
+	claim, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:    "channel",
 		Session: "subscribe",
 	})
-	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+	if !checkRequestError(suite.Suite, err, "claim creation") {
 		return
 	}
 
-	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim.Id, nil)
 	if !checkConnectionError(suite.Suite, err, resp) {
 		return
 	}
 
 	defer conn.Close()
 
-	subscribe, err := subscribeChannel(channelOptions{
-		target: target{
+	err = dSockClient.SubscribeChannel(dsock.ChannelOptions{
+		Target: dsock.Target{
 			User:    "channel",
 			Session: "subscribe",
 		},
 		Channel: "channel_subscribe",
 	})
-	if !checkRequestError(suite.Suite, err, subscribe, "subscribing channel") {
+	if !checkRequestError(suite.Suite, err, "subscribing channel") {
 		return
 	}
 
 	// Give it some time to propagate
 	time.Sleep(time.Millisecond * 10)
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			Channel: "channel_subscribe",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	connections := info["connections"].([]interface{})
-	if !suite.Len(connections, 1, "Incorrect number of connections") {
+	if !suite.Len(info.Connections, 1, "Incorrect number of connections") {
 		return
 	}
 
-	connection := connections[0].(map[string]interface{})
+	connection := info.Connections[0]
 
-	if !suite.Equal("channel", connection["user"], "Incorrect connection user") {
+	if !suite.Equal("channel", connection.User, "Incorrect connection user") {
 		return
 	}
 
-	if !suite.Equal("subscribe", connection["session"], "Incorrect connection user session") {
+	if !suite.Equal("subscribe", connection.Session, "Incorrect connection user session") {
 		return
 	}
 
 	// Includes default_channels in info
-	if !suite.Equal([]string{"global", "channel_subscribe"}, interfaceToStringSlice(connection["channels"]), "Incorrect connection channels") {
+	if !suite.Equal([]string{"global", "channel_subscribe"}, interfaceToStringSlice(connection.Channels), "Incorrect connection channels") {
 		return
 	}
 }
 
 func (suite *ChannelSuite) TestChannelUnsubscribe() {
-	claim, err := createClaim(claimOptions{
+	claim, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:     "channel",
 		Session:  "unsubscribe",
 		Channels: []string{"channel_unsubscribe"},
 	})
-	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+	if !checkRequestError(suite.Suite, err, "claim creation") {
 		return
 	}
 
-	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim.Id, nil)
 	if !checkConnectionError(suite.Suite, err, resp) {
 		return
 	}
 
 	defer conn.Close()
 
-	subscribe, err := unsubscribeChannel(channelOptions{
-		target: target{
+	err = dSockClient.UnsubscribeChannel(dsock.ChannelOptions{
+		Target: dsock.Target{
 			User:    "channel",
 			Session: "unsubscribe",
 		},
 		Channel: "channel_unsubscribe",
 	})
-	if !checkRequestError(suite.Suite, err, subscribe, "unsubscribing channel") {
+	if !checkRequestError(suite.Suite, err, "unsubscribing channel") {
 		return
 	}
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			User:    "channel",
 			Session: "unsubscribe",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	connections := info["connections"].([]interface{})
-	if !suite.Len(connections, 1, "Incorrect number of connections") {
+	if !suite.Len(info.Connections, 1, "Incorrect number of connections") {
 		return
 	}
 
-	connection := connections[0].(map[string]interface{})
+	connection := info.Connections[0]
 
-	if !suite.Equal("channel", connection["user"], "Incorrect connection user") {
+	if !suite.Equal("channel", connection.User, "Incorrect connection user") {
 		return
 	}
 
-	if !suite.Equal("unsubscribe", connection["session"], "Incorrect connection user session") {
+	if !suite.Equal("unsubscribe", connection.Session, "Incorrect connection user session") {
 		return
 	}
 
-	if !suite.Equal([]string{"global"}, interfaceToStringSlice(connection["channels"]), "Incorrect connection channels") {
+	if !suite.Equal([]string{"global"}, interfaceToStringSlice(connection.Channels), "Incorrect connection channels") {
 		return
 	}
 }
 
 func (suite *ChannelSuite) TestChannelClaim() {
-	claim, err := createClaim(claimOptions{
+	_, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:    "channel",
 		Session: "subscribe_claim",
 	})
-	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+	if !checkRequestError(suite.Suite, err, "claim creation") {
 		return
 	}
 
-	subscribe, err := subscribeChannel(channelOptions{
-		target: target{
+	err = dSockClient.SubscribeChannel(dsock.ChannelOptions{
+		Target: dsock.Target{
 			User:    "channel",
 			Session: "subscribe_claim",
 		},
 		Channel: "channel_subscribe_claim",
 	})
-	if !checkRequestError(suite.Suite, err, subscribe, "subscribing channel") {
+	if !checkRequestError(suite.Suite, err, "subscribing channel") {
 		return
 	}
 
-	info1, err := getInfo(infoOptions{
-		target: target{
+	info1, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			Channel: "channel_subscribe_claim",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info1, "getting info 1") {
+	if !checkRequestError(suite.Suite, err, "getting info 1") {
 		return
 	}
 
-	infoClaims1 := info1["claims"].([]interface{})
+	infoClaims1 := info1.Claims
 	if !suite.Len(infoClaims1, 1, "Incorrect number of info claims") {
 		return
 	}
 
-	infoClaim1 := infoClaims1[0].(map[string]interface{})
+	infoClaim1 := infoClaims1[0]
 
-	if !suite.Equal("channel", infoClaim1["user"], "Incorrect info claim 1 user") {
+	if !suite.Equal("channel", infoClaim1.User, "Incorrect info claim 1 user") {
 		return
 	}
 
-	if !suite.Equal("subscribe_claim", infoClaim1["session"], "Incorrect info claim 1 user session") {
+	if !suite.Equal("subscribe_claim", infoClaim1.Session, "Incorrect info claim 1 user session") {
 		return
 	}
 
-	if !suite.Equal([]string{"channel_subscribe_claim"}, interfaceToStringSlice(infoClaim1["channels"]), "Incorrect info claim 1 channels") {
+	if !suite.Equal([]string{"channel_subscribe_claim"}, interfaceToStringSlice(infoClaim1.Channels), "Incorrect info claim 1 channels") {
 		return
 	}
 
-	unsubscribe, err := unsubscribeChannel(channelOptions{
-		target: target{
+	err = dSockClient.UnsubscribeChannel(dsock.ChannelOptions{
+		Target: dsock.Target{
 			User:    "channel",
 			Session: "subscribe_claim",
 		},
 		Channel: "channel_subscribe_claim",
 	})
-	if !checkRequestError(suite.Suite, err, unsubscribe, "unsubscribing channel") {
+	if !checkRequestError(suite.Suite, err, "unsubscribing channel") {
 		return
 	}
 
-	info2, err := getInfo(infoOptions{
-		target: target{
+	info2, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			Channel: "channel_subscribe_claim",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info2, "getting info 2") {
+	if !checkRequestError(suite.Suite, err, "getting info 2") {
 		return
 	}
 
-	infoClaims2 := info2["claims"].([]interface{})
-	if !suite.Len(infoClaims2, 0, "Incorrect number of info claims") {
+	if !suite.Len(info2.Claims, 0, "Incorrect number of info claims") {
 		return
 	}
 }
 func (suite *ChannelSuite) TestChannelClaimIgnore() {
-	claim, err := createClaim(claimOptions{
+	_, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:    "channel",
 		Session: "subscribe_claim_ignore",
 	})
-	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+	if !checkRequestError(suite.Suite, err, "claim creation") {
 		return
 	}
 
-	subscribe, err := subscribeChannel(channelOptions{
-		target: target{
+	err = dSockClient.SubscribeChannel(dsock.ChannelOptions{
+		Target: dsock.Target{
 			User:    "channel",
 			Session: "subscribe_claim_ignore",
 		},
 		Channel:      "channel_subscribe_claim_ignore",
 		IgnoreClaims: true,
 	})
-	if !checkRequestError(suite.Suite, err, subscribe, "subscribing channel") {
+	if !checkRequestError(suite.Suite, err, "subscribing channel") {
 		return
 	}
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			Channel: "channel_subscribe_claim_ignore",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	infoClaims := info["claims"].([]interface{})
-	if !suite.Len(infoClaims, 0, "Incorrect number of info claims") {
+	if !suite.Len(info.Claims, 0, "Incorrect number of info claims") {
 		return
 	}
 }

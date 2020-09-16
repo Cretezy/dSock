@@ -3,6 +3,7 @@ module github.com/Cretezy/dSock
 go 1.13
 
 require (
+	github.com/Cretezy/dSock-go v1.0.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-contrib/requestid v0.0.0-20200512155051-855d6508f0f0
 	github.com/gin-contrib/zap v0.0.1

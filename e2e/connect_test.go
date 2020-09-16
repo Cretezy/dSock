@@ -2,6 +2,7 @@ package dsock_test
 
 import (
 	"encoding/json"
+	dsock "github.com/Cretezy/dSock-go"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
@@ -17,44 +18,43 @@ func TestConnectSuite(t *testing.T) {
 }
 
 func (suite *ConnectSuite) TestClaimConnect() {
-	claim, err := createClaim(claimOptions{
+	claim, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
 		User:    "connect",
 		Session: "claim",
 	})
-	if !checkRequestError(suite.Suite, err, claim, "claim creation") {
+	if !checkRequestError(suite.Suite, err, "claim creation") {
 		return
 	}
 
-	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim["claim"].(map[string]interface{})["id"].(string), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial("ws://worker/connect?claim="+claim.Id, nil)
 	if !checkConnectionError(suite.Suite, err, resp) {
 		return
 	}
 
 	defer conn.Close()
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			User:    "connect",
 			Session: "claim",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	connections := info["connections"].([]interface{})
+	connections := info.Connections
 	if !suite.Len(connections, 1, "Incorrect number of connections") {
 		return
 	}
 
-	claimData := claim["claim"].(map[string]interface{})
-	connection := connections[0].(map[string]interface{})
+	connection := connections[0]
 
-	suite.Equal("connect", claimData["user"], "Incorrect claim user")
-	suite.Equal("connect", connection["user"], "Incorrect connection user")
+	suite.Equal("connect", claim.User, "Incorrect claim user")
+	suite.Equal("connect", connection.User, "Incorrect connection user")
 
-	suite.Equal("claim", claimData["session"], "Incorrect claim user session")
-	suite.Equal("claim", connection["session"], "Incorrect connection user session")
+	suite.Equal("claim", claim.Session, "Incorrect claim user session")
+	suite.Equal("claim", connection.Session, "Incorrect connection user session")
 }
 
 func (suite *ConnectSuite) TestInvalidClaim() {
@@ -100,25 +100,25 @@ func (suite *ConnectSuite) TestJwtConnect() {
 
 	defer conn.Close()
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			User:    "connect",
 			Session: "jwt",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	connections := info["connections"].([]interface{})
+	connections := info.Connections
 	if !suite.Len(connections, 1, "Incorrect number of connections") {
 		return
 	}
 
-	connection := connections[0].(map[string]interface{})
+	connection := connections[0]
 
-	suite.Equal("connect", connection["user"], "Incorrect connection user")
-	suite.Equal("jwt", connection["session"], "Incorrect connection user session")
+	suite.Equal("connect", connection.User, "Incorrect connection user")
+	suite.Equal("jwt", connection.Session, "Incorrect connection user session")
 }
 
 func (suite *ConnectSuite) TestInvalidJwt() {
@@ -173,31 +173,31 @@ func (suite *ConnectSuite) TestJwtConnectChannel() {
 
 	defer conn.Close()
 
-	info, err := getInfo(infoOptions{
-		target: target{
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
 			Channel: "connect_jwt",
 		},
 	})
-	if !checkRequestError(suite.Suite, err, info, "getting info") {
+	if !checkRequestError(suite.Suite, err, "getting info") {
 		return
 	}
 
-	connections := info["connections"].([]interface{})
+	connections := info.Connections
 	if !suite.Len(connections, 1, "Incorrect number of connections") {
 		return
 	}
 
-	connection := connections[0].(map[string]interface{})
+	connection := connections[0]
 
-	if !suite.Equal("connect", connection["user"], "Incorrect connection user") {
+	if !suite.Equal("connect", connection.User, "Incorrect connection user") {
 		return
 	}
-	if !suite.Equal("jwt_channel", connection["session"], "Incorrect connection user session") {
+	if !suite.Equal("jwt_channel", connection.Session, "Incorrect connection user session") {
 		return
 	}
 
 	// Includes default_channels in info
-	if !suite.Equal([]string{"connect_jwt", "global"}, interfaceToStringSlice(connection["channels"]), "Incorrect connection channels") {
+	if !suite.Equal([]string{"connect_jwt", "global"}, interfaceToStringSlice(connection.Channels), "Incorrect connection channels") {
 		return
 	}
 }
