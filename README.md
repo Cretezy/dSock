@@ -40,6 +40,13 @@ Clients connect to dSock, and your back-end can broadcast messages to a specific
 
 **More!**
 
+## Clients
+
+Use a client to interact with the dSock API easily. Your language missing? Open a ticket!
+
+- [Node](https://github.com/Cretezy/dSock-node)
+- [Go](https://github.com/Cretezy/dSock-go)
+
 ## Architecture
 
 ![](https://i.imgur.com/pFo2zDU.png)
