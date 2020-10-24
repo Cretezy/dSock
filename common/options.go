@@ -1,6 +1,7 @@
 package common
 
 import (
+	"crypto/tls"
 	"github.com/go-redis/redis/v7"
 	"github.com/spf13/viper"
 	"os"
@@ -37,6 +38,8 @@ func SetupConfig() error {
 	viper.SetDefault("redis_host", "localhost:6379")
 	viper.SetDefault("redis_password", "")
 	viper.SetDefault("redis_db", 0)
+	viper.SetDefault("redis_max_retries", 10)
+	viper.SetDefault("redis_tls", false)
 	viper.SetDefault("address", ":6241")
 	viper.SetDefault("default_channels", "")
 	viper.SetDefault("token", "")
@@ -74,17 +77,24 @@ func GetOptions() (*DSockOptions, error) {
 		address = viper.GetString("address")
 	}
 
+	redisOptions := redis.Options{
+		Addr:       viper.GetString("redis_host"),
+		Password:   viper.GetString("redis_password"),
+		DB:         viper.GetInt("redis_db"),
+		MaxRetries: viper.GetInt("redis_max_retries"),
+	}
+
+	if viper.GetBool("redis_tls") {
+		redisOptions.TLSConfig = &tls.Config{}
+	}
+
 	return &DSockOptions{
-		Debug:       viper.GetBool("debug"),
-		LogRequests: viper.GetBool("log_requests"),
-		RedisOptions: &redis.Options{
-			Addr:     viper.GetString("redis_host"),
-			Password: viper.GetString("redis_password"),
-			DB:       viper.GetInt("redis_db"),
-		},
-		Address:     address,
-		Token:       viper.GetString("token"),
-		QuitChannel: make(chan struct{}, 0),
+		Debug:        viper.GetBool("debug"),
+		LogRequests:  viper.GetBool("log_requests"),
+		RedisOptions: &redisOptions,
+		Address:      address,
+		Token:        viper.GetString("token"),
+		QuitChannel:  make(chan struct{}, 0),
 		Jwt: JwtOptions{
 			JwtSecret: viper.GetString("jwt_secret"),
 		},

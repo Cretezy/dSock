@@ -120,6 +120,8 @@ dSock can be configured using a config file or using environment variables.
   - `DSOCK_REDIS_HOST` (`redis_host`, string): Redis host. Defaults to `localhost:6379`
   - `DSOCK_REDIS_PASSWORD` (`redis_password`, string): Redis password. Defaults to no password
   - `DSOCK_REDIS_DB` (`redis_db`, integer): Redis database. Defaults to `0`
+  - `DSOCK_REDIS_MAX_RETRIES` (`redis_max_retries`, integer): Maximum retries before failing Redis connection. Defaults to `10`
+  - `DSOCK_REDIS_TLS` (`redis_tls`, boolean): Whether to enable TLS for Redis. Defaults to `false`
 - `DSOCK_DEFAULT_CHANNELS` (`default_channels`, comma-delimited string, optional): When set, clients will be automatically subscribed to these channels
 - Authentication:
   - `DSOCK_TOKEN` (`token`, string): Authentication token to do requests to the API

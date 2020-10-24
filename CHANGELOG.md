@@ -1,3 +1,8 @@
+## Unreleased
+
+- Add `redis_max_retries` option
+- Add `redis_tls` option
+
 ## v0.3.3 - 2020-07-15
 
 - Add `/ping` endpoint on API & worker
