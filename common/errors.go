@@ -1,8 +1,10 @@
 package common
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+)
 
-var (
+const (
 	ErrorUserIdRequired        = "USER_ID_REQUIRED"
 	ErrorInvalidExpiration     = "INVALID_EXPIRATION"
 	ErrorNegativeExpiration    = "NEGATIVE_EXPIRATION"
@@ -24,6 +26,11 @@ var (
 	ErrorMarshallingMessage    = "ERROR_MARSHALLING_MESSAGE"
 	ErrorInvalidMessageType    = "INVALID_MESSAGE_TYPE"
 	ErrorBindingQueryParams    = "ERROR_BINDING_QUERY_PARAMS"
+	ErrorGettingWorker         = "ERROR_GETTING_WORKER"
+	ErrorReachingWorker        = "ERROR_REACHING_WORKER"
+	ErrorDeliveringMessage     = "ERROR_DELIVERING_MESSAGING"
+	ErrorInvalidContentType    = "INVALID_CONTENT_TYPE"
+	ErrorReadingBody           = "ERROR_READING_BODY"
 )
 
 var ErrorMessages = map[string]string{
@@ -48,6 +55,11 @@ var ErrorMessages = map[string]string{
 	ErrorMarshallingMessage:    "Error marshalling message",
 	ErrorInvalidMessageType:    "Invalid message type, must be text or binary",
 	ErrorBindingQueryParams:    "Error binding query parameters",
+	ErrorGettingWorker:         "Error getting worker",
+	ErrorReachingWorker:        "Error reaching worker",
+	ErrorDeliveringMessage:     "Error delivering message",
+	ErrorInvalidContentType:    "Invalid Content-Type",
+	ErrorReadingBody:           "Error reading body",
 }
 
 type ApiError struct {
@@ -59,6 +71,8 @@ type ApiError struct {
 	CustomErrorMessage string
 	/// HTTP status code
 	StatusCode int
+	/// Request ID
+	RequestId string
 }
 
 func (apiError *ApiError) Error() string {
@@ -86,11 +100,17 @@ func (apiError *ApiError) Format() (int, gin.H) {
 		errorMessage = apiError.ErrorCode
 	}
 
-	return statusCode, gin.H{
+	response := gin.H{
 		"success":   false,
 		"errorCode": apiError.ErrorCode,
 		"error":     errorMessage,
 	}
+
+	if apiError.RequestId != "" {
+		response["requestId"] = apiError.RequestId
+	}
+
+	return statusCode, response
 }
 
 func (apiError *ApiError) Send(c *gin.Context) {

@@ -6,12 +6,10 @@ import (
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
-	"sync"
 )
 
 func disconnectHandler(c *gin.Context) {
-	logger.Debug("Getting disconnect request",
+	logger.Info("Getting disconnect request",
 		zap.String("requestId", requestid.Get(c)),
 		zap.String("id", c.Query("id")),
 		zap.String("user", c.Query("user")),
@@ -28,6 +26,7 @@ func disconnectHandler(c *gin.Context) {
 			InternalError: err,
 			ErrorCode:     common.ErrorBindingQueryParams,
 			StatusCode:    400,
+			RequestId:     requestid.Get(c),
 		}
 		apiError.Send(c)
 		return
@@ -36,7 +35,7 @@ func disconnectHandler(c *gin.Context) {
 	keepClaims := c.Query("keepClaims") == "true"
 
 	// Get all worker IDs that the target is connected to
-	workerIds, apiError := resolveWorkers(resolveOptions)
+	workerIds, apiError := resolveWorkers(resolveOptions, requestid.Get(c))
 	if apiError != nil {
 		apiError.Send(c)
 		return
@@ -44,7 +43,7 @@ func disconnectHandler(c *gin.Context) {
 
 	if !keepClaims {
 		// Expire claims instantly, must resolve all claims for target
-		claimIds, apiError := resolveClaims(resolveOptions)
+		claimIds, apiError := resolveClaims(resolveOptions, requestid.Get(c))
 
 		if apiError != nil {
 			apiError.Send(c)
@@ -79,33 +78,14 @@ func disconnectHandler(c *gin.Context) {
 		},
 	}
 
-	rawMessage, err := proto.Marshal(message)
-
-	if err != nil {
-		apiError := common.ApiError{
-			ErrorCode:  common.ErrorMarshallingMessage,
-			StatusCode: 500,
-		}
+	// Send to all workers
+	apiError = sendToWorkers(workerIds, message, MessageMessageType, requestid.Get(c))
+	if apiError != nil {
 		apiError.Send(c)
 		return
 	}
 
-	// Send message to all resolved workers
-	var workersWaitGroup sync.WaitGroup
-	workersWaitGroup.Add(len(workerIds))
-
-	for _, workerId := range workerIds {
-		workerId := workerId
-		go func() {
-			defer workersWaitGroup.Done()
-
-			redisClient.Publish(workerId, rawMessage)
-		}()
-	}
-
-	workersWaitGroup.Wait()
-
-	logger.Debug("Disconnected",
+	logger.Info("Disconnected",
 		zap.String("requestId", requestid.Get(c)),
 		zap.Strings("workerIds", workerIds),
 		zap.String("id", resolveOptions.Connection),

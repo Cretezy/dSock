@@ -20,7 +20,7 @@ type claimOptions struct {
 }
 
 func createClaimHandler(c *gin.Context) {
-	logger.Debug("Getting new claim request",
+	logger.Info("Getting new claim request",
 		zap.String("requestId", requestid.Get(c)),
 		zap.String("id", c.Query("id")),
 		zap.String("user", c.Query("user")),
@@ -38,6 +38,7 @@ func createClaimHandler(c *gin.Context) {
 			InternalError: err,
 			ErrorCode:     common.ErrorBindingQueryParams,
 			StatusCode:    400,
+			RequestId:     requestid.Get(c),
 		}
 		apiError.Send(c)
 		return
@@ -51,6 +52,7 @@ func createClaimHandler(c *gin.Context) {
 		apiError := common.ApiError{
 			ErrorCode:  common.ErrorUserIdRequired,
 			StatusCode: 400,
+			RequestId:  requestid.Get(c),
 		}
 		apiError.Send(c)
 		return
@@ -66,6 +68,7 @@ func createClaimHandler(c *gin.Context) {
 			apiError := common.ApiError{
 				ErrorCode:  common.ErrorInvalidExpiration,
 				StatusCode: 400,
+				RequestId:  requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -75,6 +78,7 @@ func createClaimHandler(c *gin.Context) {
 			apiError := common.ApiError{
 				ErrorCode:  common.ErrorNegativeExpiration,
 				StatusCode: 400,
+				RequestId:  requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -86,6 +90,7 @@ func createClaimHandler(c *gin.Context) {
 			apiError := common.ApiError{
 				ErrorCode:  common.ErrorInvalidExpiration,
 				StatusCode: 400,
+				RequestId:  requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -97,6 +102,7 @@ func createClaimHandler(c *gin.Context) {
 			apiError := common.ApiError{
 				ErrorCode:  common.ErrorInvalidDuration,
 				StatusCode: 400,
+				RequestId:  requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -106,6 +112,7 @@ func createClaimHandler(c *gin.Context) {
 			apiError := common.ApiError{
 				ErrorCode:  common.ErrorNegativeDuration,
 				StatusCode: 400,
+				RequestId:  requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -126,6 +133,7 @@ func createClaimHandler(c *gin.Context) {
 			apiError := common.ApiError{
 				ErrorCode:  common.ErrorCheckingClaim,
 				StatusCode: 500,
+				RequestId:  requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -135,6 +143,7 @@ func createClaimHandler(c *gin.Context) {
 			apiError := common.ApiError{
 				ErrorCode:  common.ErrorClaimIdAlreadyUsed,
 				StatusCode: 400,
+				RequestId:  requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -174,7 +183,7 @@ func createClaimHandler(c *gin.Context) {
 		redisClient.SAdd(channelKey, id, 0)
 	}
 
-	logger.Debug("Created new claim",
+	logger.Info("Created new claim",
 		zap.String("requestId", requestid.Get(c)),
 		zap.String("id", id),
 		zap.String("user", claimOptions.User),

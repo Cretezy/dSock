@@ -1,4 +1,3 @@
-address = ""
 debug = true
 log_requests = true
 redis_db = 0
@@ -7,3 +6,4 @@ redis_password = ""
 token = "abc123"
 jwt_token = "abc123"
 default_channels = "global"
+messaging_method = "direct"

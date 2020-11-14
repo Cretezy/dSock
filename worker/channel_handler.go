@@ -3,6 +3,10 @@ package main
 import (
 	"github.com/Cretezy/dSock/common"
 	"github.com/Cretezy/dSock/common/protos"
+	"github.com/gin-contrib/requestid"
+	"github.com/gin-gonic/gin"
+	"google.golang.org/protobuf/proto"
+	"io/ioutil"
 	"strings"
 )
 
@@ -41,4 +45,52 @@ func handleChannel(channelAction *protos.ChannelAction) {
 
 		redisClient.HSet("conn:"+connection.Id, "channels", strings.Join(connection.GetChannels(), ","))
 	}
+}
+
+func channelMessageHandler(c *gin.Context) {
+	requestId := requestid.Get(c)
+
+	if c.ContentType() != common.ProtobufContentType {
+		apiError := &common.ApiError{
+			ErrorCode:  common.ErrorInvalidContentType,
+			StatusCode: 400,
+			RequestId:  requestId,
+		}
+		apiError.Send(c)
+		return
+	}
+
+	body, err := ioutil.ReadAll(c.Request.Body)
+	if err != nil {
+		apiError := &common.ApiError{
+			InternalError: err,
+			ErrorCode:     common.ErrorReadingBody,
+			StatusCode:    400,
+			RequestId:     requestId,
+		}
+		apiError.Send(c)
+		return
+	}
+
+	var message protos.ChannelAction
+
+	err = proto.Unmarshal(body, &message)
+
+	if err != nil {
+		// Couldn't parse message
+		apiError := &common.ApiError{
+			InternalError: err,
+			ErrorCode:     common.ErrorReadingBody,
+			StatusCode:    400,
+			RequestId:     requestId,
+		}
+		apiError.Send(c)
+		return
+	}
+
+	handleChannel(&message)
+
+	c.AbortWithStatusJSON(200, gin.H{
+		"success": true,
+	})
 }

@@ -6,7 +6,7 @@ import (
 )
 
 /// Resolves the workers holding the connection
-func resolveWorkers(options common.ResolveOptions) ([]string, *common.ApiError) {
+func resolveWorkers(options common.ResolveOptions, requestId string) ([]string, *common.ApiError) {
 	workerIds := make([]string, 0)
 
 	var workersLock sync.Mutex
@@ -46,6 +46,7 @@ func resolveWorkers(options common.ResolveOptions) ([]string, *common.ApiError) 
 				InternalError: channel.Err(),
 				StatusCode:    500,
 				ErrorCode:     common.ErrorGettingChannel,
+				RequestId:     requestId,
 			}
 		}
 
@@ -75,6 +76,7 @@ func resolveWorkers(options common.ResolveOptions) ([]string, *common.ApiError) 
 						InternalError: connection.Err(),
 						StatusCode:    500,
 						ErrorCode:     common.ErrorGettingConnection,
+						RequestId:     requestId,
 					}
 					return
 				}
@@ -107,6 +109,7 @@ func resolveWorkers(options common.ResolveOptions) ([]string, *common.ApiError) 
 				InternalError: user.Err(),
 				StatusCode:    500,
 				ErrorCode:     common.ErrorGettingUser,
+				RequestId:     requestId,
 			}
 		}
 
@@ -136,6 +139,7 @@ func resolveWorkers(options common.ResolveOptions) ([]string, *common.ApiError) 
 						InternalError: connection.Err(),
 						StatusCode:    500,
 						ErrorCode:     common.ErrorGettingConnection,
+						RequestId:     requestId,
 					}
 					return
 				}
@@ -169,6 +173,7 @@ func resolveWorkers(options common.ResolveOptions) ([]string, *common.ApiError) 
 		return nil, &common.ApiError{
 			StatusCode: 400,
 			ErrorCode:  common.ErrorTarget,
+			RequestId:  requestId,
 		}
 	}
 

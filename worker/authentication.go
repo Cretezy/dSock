@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/Cretezy/dSock/common"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 				InternalError: claimData.Err(),
 				ErrorCode:     common.ErrorGettingClaim,
 				StatusCode:    500,
+				RequestId:     requestid.Get(c),
 			}
 		}
 
@@ -41,6 +43,7 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 			return nil, &common.ApiError{
 				ErrorCode:  common.ErrorMissingClaim,
 				StatusCode: 400,
+				RequestId:  requestid.Get(c),
 			}
 		}
 
@@ -51,6 +54,7 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 				InternalError: err,
 				ErrorCode:     common.ErrorInvalidExpiration,
 				StatusCode:    500,
+				RequestId:     requestid.Get(c),
 			}
 		}
 
@@ -59,6 +63,7 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 			return nil, &common.ApiError{
 				ErrorCode:  common.ErrorExpiredClaim,
 				StatusCode: 400,
+				RequestId:  requestid.Get(c),
 			}
 		}
 
@@ -89,6 +94,7 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 				InternalError: err,
 				ErrorCode:     common.ErrorInvalidJwt,
 				StatusCode:    400,
+				RequestId:     requestid.Get(c),
 			}
 		}
 
@@ -106,6 +112,7 @@ func authenticate(c *gin.Context) (*Authentication, *common.ApiError) {
 		return nil, &common.ApiError{
 			ErrorCode:  common.ErrorMissingAuthentication,
 			StatusCode: 400,
+			RequestId:  requestid.Get(c),
 		}
 	}
 }

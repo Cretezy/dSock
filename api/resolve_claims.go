@@ -1,8 +1,10 @@
 package main
 
-import "github.com/Cretezy/dSock/common"
+import (
+	"github.com/Cretezy/dSock/common"
+)
 
-func resolveClaims(options common.ResolveOptions) ([]string, *common.ApiError) {
+func resolveClaims(options common.ResolveOptions, requestId string) ([]string, *common.ApiError) {
 	if options.Session != "" {
 		userSessionClaims := redisClient.SMembers("claim-user-session:" + options.User + "-" + options.Session)
 
@@ -10,6 +12,7 @@ func resolveClaims(options common.ResolveOptions) ([]string, *common.ApiError) {
 			return nil, &common.ApiError{
 				ErrorCode:  common.ErrorGettingClaim,
 				StatusCode: 500,
+				RequestId:  requestId,
 			}
 		}
 
@@ -21,6 +24,7 @@ func resolveClaims(options common.ResolveOptions) ([]string, *common.ApiError) {
 			return nil, &common.ApiError{
 				ErrorCode:  common.ErrorGettingClaim,
 				StatusCode: 500,
+				RequestId:  requestId,
 			}
 		}
 
@@ -32,6 +36,7 @@ func resolveClaims(options common.ResolveOptions) ([]string, *common.ApiError) {
 			return nil, &common.ApiError{
 				ErrorCode:  common.ErrorGettingClaim,
 				StatusCode: 500,
+				RequestId:  requestId,
 			}
 		}
 

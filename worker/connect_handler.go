@@ -13,7 +13,7 @@ import (
 )
 
 func connectHandler(c *gin.Context) {
-	logger.Debug("Getting new connection request",
+	logger.Info("Getting new connection request",
 		zap.String("requestId", requestid.Get(c)),
 		zap.String("claim", c.Query("claim")),
 		zap.String("jwt", c.Query("jwt")),
@@ -26,7 +26,7 @@ func connectHandler(c *gin.Context) {
 		return
 	}
 
-	logger.Debug("Authenticated connection request",
+	logger.Info("Authenticated connection request",
 		zap.String("requestId", requestid.Get(c)),
 		zap.String("user", authentication.User),
 		zap.String("session", authentication.Session),
@@ -48,7 +48,7 @@ func connectHandler(c *gin.Context) {
 	// Generate connection ID (random UUIDv4, can't be guessed)
 	connId := uuid.New().String()
 
-	logger.Debug("Upgraded connection request",
+	logger.Info("Upgraded connection request",
 		zap.String("requestId", requestid.Get(c)),
 		zap.String("id", connId),
 	)
@@ -148,7 +148,7 @@ SendLoop:
 			_ = conn.WriteMessage(int(message.Type), message.Body)
 			break
 		case <-connection.CloseChannel:
-			logger.Debug("Disconnecting user",
+			logger.Info("Disconnecting user",
 				zap.String("requestId", requestid.Get(c)),
 				zap.String("id", connId),
 			)

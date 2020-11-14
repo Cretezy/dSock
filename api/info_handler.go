@@ -48,7 +48,7 @@ func formatClaim(id string, claim map[string]string) gin.H {
 }
 
 func infoHandler(c *gin.Context) {
-	logger.Debug("Getting info request",
+	logger.Info("Getting info request",
 		zap.String("requestId", requestid.Get(c)),
 		zap.String("id", c.Query("id")),
 		zap.String("user", c.Query("user")),
@@ -64,12 +64,13 @@ func infoHandler(c *gin.Context) {
 			InternalError: err,
 			ErrorCode:     common.ErrorBindingQueryParams,
 			StatusCode:    400,
+			RequestId:     requestid.Get(c),
 		}
 		apiError.Send(c)
 		return
 	}
 
-	claimIds, apiError := resolveClaims(resolveOptions)
+	claimIds, apiError := resolveClaims(resolveOptions, requestid.Get(c))
 	if apiError != nil {
 		apiError.Send(c)
 		return
@@ -99,6 +100,7 @@ func infoHandler(c *gin.Context) {
 					InternalError: claim.Err(),
 					ErrorCode:     common.ErrorGettingClaim,
 					StatusCode:    500,
+					RequestId:     requestid.Get(c),
 				}
 				return
 			}
@@ -137,6 +139,7 @@ func infoHandler(c *gin.Context) {
 				InternalError: connection.Err(),
 				StatusCode:    500,
 				ErrorCode:     common.ErrorGettingConnection,
+				RequestId:     requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -165,6 +168,7 @@ func infoHandler(c *gin.Context) {
 				InternalError: user.Err(),
 				StatusCode:    500,
 				ErrorCode:     common.ErrorGettingUser,
+				RequestId:     requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -205,6 +209,7 @@ func infoHandler(c *gin.Context) {
 						InternalError: connection.Err(),
 						StatusCode:    500,
 						ErrorCode:     common.ErrorGettingConnection,
+						RequestId:     requestid.Get(c),
 					}
 					return
 				}
@@ -245,6 +250,7 @@ func infoHandler(c *gin.Context) {
 				InternalError: channel.Err(),
 				StatusCode:    500,
 				ErrorCode:     common.ErrorGettingChannel,
+				RequestId:     requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -285,6 +291,7 @@ func infoHandler(c *gin.Context) {
 						InternalError: connection.Err(),
 						StatusCode:    500,
 						ErrorCode:     common.ErrorGettingConnection,
+						RequestId:     requestid.Get(c),
 					}
 					return
 				}
@@ -307,7 +314,7 @@ func infoHandler(c *gin.Context) {
 			return
 		}
 
-		c.AbortWithStatusJSON(200, map[string]interface{}{
+		c.AbortWithStatusJSON(200, gin.H{
 			"success":     true,
 			"connections": connections,
 			"claims":      claims,
@@ -316,6 +323,7 @@ func infoHandler(c *gin.Context) {
 		apiError := common.ApiError{
 			StatusCode: 400,
 			ErrorCode:  common.ErrorTarget,
+			RequestId:  requestid.Get(c),
 		}
 		apiError.Send(c)
 	}

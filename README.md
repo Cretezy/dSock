@@ -115,7 +115,8 @@ Configs are still supported (can be mounted to `/config.toml` or `/config.$EXT`,
 
 dSock can be configured using a config file or using environment variables.
 
-- `DSOCK_ADDRESS` (`address`, string): Address to listen to. Defaults to `:6241`. Uses `PORT` if empty.
+- `PORT` (`port`, integer, or `DSOCK_PORT` environment variable): Port to listen to. Defaults to `6241`
+- `DSOCK_ADDRESS` (`address`, string, _deprecated_):: Address to listen to. Defaults to `:6241`. Uses port if empty.
 - Redis:
   - `DSOCK_REDIS_HOST` (`redis_host`, string): Redis host. Defaults to `localhost:6379`
   - `DSOCK_REDIS_PASSWORD` (`redis_password`, string): Redis password. Defaults to no password
@@ -128,6 +129,12 @@ dSock can be configured using a config file or using environment variables.
   - `DSOCK_JWT_SECRET` (`jwt_secret`, string, optional): When set, enables JWT authentication
 - `DSOCK_DEBUG` (`debug`, boolean): Enables debugging, useful for development. Defaults to `false`
 - `DSOCK_LOG_REQUESTS` (`log_requests`, boolean): Enables request logging. Defaults to `false`
+- `DSOCK_MESSAGING_METHOD` (`messaging_method`, string): The messages method for communication from API to worker. Can be: `redis`, `direct`. Defaults to `redis`
+
+#### Worker only
+
+- `DSOCK_DIRECT_MESSAGE_HOST` (`direct_message_hostname`, string, worker only): If `method_method` is set to `direct`, this is the hostname of the worker accessible from the API
+- `DSOCK_DIRECT_MESSAGE_PORT` (`direct_message_port`, string, worker only): If `method_method` is set to `direct`, this is the port that the worker is listening on. Defaults to port
 
 You can write your config file in TOML (recommended), JSON, YAML, or any format supported by [viper](https://github.com/spf13/viper)
 

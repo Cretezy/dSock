@@ -10,7 +10,7 @@ import (
 )
 
 func sendHandler(c *gin.Context) {
-	logger.Debug("Getting send request",
+	logger.Info("Getting send request",
 		zap.String("requestId", requestid.Get(c)),
 		zap.String("id", c.Query("id")),
 		zap.String("user", c.Query("user")),
@@ -26,13 +26,14 @@ func sendHandler(c *gin.Context) {
 			InternalError: err,
 			ErrorCode:     common.ErrorBindingQueryParams,
 			StatusCode:    400,
+			RequestId:     requestid.Get(c),
 		}
 		apiError.Send(c)
 		return
 	}
 
 	// Get all worker IDs that the target(s) is connected to
-	workerIds, apiError := resolveWorkers(resolveOptions)
+	workerIds, apiError := resolveWorkers(resolveOptions, requestid.Get(c))
 	if apiError != nil {
 		apiError.Send(c)
 		return
@@ -44,6 +45,7 @@ func sendHandler(c *gin.Context) {
 		apiError := common.ApiError{
 			StatusCode: 400,
 			ErrorCode:  common.ErrorInvalidMessageType,
+			RequestId:  requestid.Get(c),
 		}
 		apiError.Send(c)
 		return
@@ -56,6 +58,7 @@ func sendHandler(c *gin.Context) {
 		apiError := common.ApiError{
 			StatusCode: 500,
 			ErrorCode:  common.ErrorReadingMessage,
+			RequestId:  requestid.Get(c),
 		}
 		apiError.Send(c)
 		return
@@ -74,13 +77,13 @@ func sendHandler(c *gin.Context) {
 	}
 
 	// Send to all workers
-	apiError = sendToWorkers(workerIds, message)
+	apiError = sendToWorkers(workerIds, message, MessageMessageType, requestid.Get(c))
 	if apiError != nil {
 		apiError.Send(c)
 		return
 	}
 
-	logger.Debug("Sent message",
+	logger.Info("Sent message",
 		zap.String("requestId", requestid.Get(c)),
 		zap.Strings("workerIds", workerIds),
 		zap.String("id", resolveOptions.Connection),

@@ -22,7 +22,7 @@ var logger *zap.Logger
 func init() {
 	var err error
 
-	options, err = common.GetOptions()
+	options, err = common.GetOptions(false)
 
 	if err != nil {
 		println("Could not get options. Make sure your config is valid!")
@@ -44,6 +44,8 @@ func init() {
 func main() {
 	logger.Info("Starting dSock API",
 		zap.String("version", common.DSockVersion),
+		zap.Int("port", options.Port),
+		zap.String("DEPRECATED.address", options.Address),
 	)
 
 	// Setup application

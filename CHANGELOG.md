@@ -1,7 +1,12 @@
-## Unreleased
+## Unreleased (v0.4.0)
 
+- Add direct API to worker messaging
 - Add `redis_max_retries` option
 - Add `redis_tls` option
+- Added request ID to error responses
+- Added more logging (including on error responses), and change multiple debug logging to info
+- Parallelized parsing of messages received from Redis (should increase throughput)
+- Deprecating `address` option: Use `port` instead
 
 ## v0.3.3 - 2020-07-15
 

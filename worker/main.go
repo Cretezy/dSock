@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -45,7 +46,7 @@ var redisClient *redis.Client
 func init() {
 	var err error
 
-	options, err = common.GetOptions()
+	options, err = common.GetOptions(true)
 
 	if err != nil {
 		println("Could not get options. Make sure your config is valid!")
@@ -67,7 +68,10 @@ func init() {
 func main() {
 	logger.Info("Starting dSock worker",
 		zap.String("version", common.DSockVersion),
+		zap.Int("port", options.Port),
+		zap.String("DEPRECATED.address", options.Address),
 	)
+
 	// Setup application
 	redisClient = redis.NewClient(options.RedisOptions)
 
@@ -77,9 +81,6 @@ func main() {
 			zap.Error(err),
 		)
 	}
-
-	messageSubscription := redisClient.Subscribe(workerId)
-	channelSubscription := redisClient.Subscribe(workerId + ":channel")
 
 	if options.Debug {
 		gin.SetMode(gin.DebugMode)
@@ -101,76 +102,107 @@ func main() {
 
 	signalQuit := make(chan os.Signal, 1)
 
+	// Register worker in Redis
+	redisWorker := map[string]interface{}{
+		"lastPing": time.Now().Format(time.RFC3339),
+	}
+	if options.MessagingMethod == common.MessageMethodDirect {
+		redisWorker["ip"] = options.DirectHostname + ":" + strconv.Itoa(options.DirectPort)
+	}
+
+	redisClient.HSet("worker:"+workerId, redisWorker)
+
+	closeMessaging := func() {}
+
+	if options.MessagingMethod == common.MessageMethodRedis {
+		// Loop receiving messages from Redis
+		messageSubscription := redisClient.Subscribe(workerId)
+		go func() {
+			for {
+				redisMessage, err := messageSubscription.ReceiveMessage()
+				if err != nil {
+					// TODO: Possibly add better handling
+					logger.Error("Error receiving message from Redis",
+						zap.Error(err),
+					)
+					break
+				}
+
+				go func() {
+					var message protos.Message
+
+					err = proto.Unmarshal([]byte(redisMessage.Payload), &message)
+
+					if err != nil {
+						// Couldn't parse message
+						logger.Error("Invalid message received from Redis",
+							zap.Error(err),
+						)
+						return
+					}
+
+					handleSend(&message)
+				}()
+
+				if signalQuit == nil {
+					break
+				}
+			}
+		}()
+
+		// Loop receiving channel actions from Redis
+		channelSubscription := redisClient.Subscribe(workerId + ":channel")
+		go func() {
+			for {
+				redisMessage, err := channelSubscription.ReceiveMessage()
+				if err != nil {
+					// TODO: Possibly add better handling
+					logger.Error("Error receiving message from Redis",
+						zap.Error(err),
+					)
+					break
+				}
+
+				go func() {
+					var channelAction protos.ChannelAction
+
+					err = proto.Unmarshal([]byte(redisMessage.Payload), &channelAction)
+
+					if err != nil {
+						// Couldn't parse channel action
+						logger.Error("Invalid message received from Redis",
+							zap.Error(err),
+						)
+						return
+					}
+
+					handleChannel(&channelAction)
+				}()
+
+				if signalQuit == nil {
+					break
+				}
+			}
+		}()
+
+		closeMessaging = func() {
+			_ = messageSubscription.Close()
+			_ = channelSubscription.Close()
+		}
+	} else {
+		// TODO
+		router.POST(common.PathReceiveMessage, sendMessageHandler)
+		router.POST(common.PathReceiveChannelMessage, channelMessageHandler)
+	}
+
+	// TODO: Add lastPing refresh every minute
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("Failed listening",
 				zap.Error(err),
 			)
 			options.QuitChannel <- struct{}{}
-		}
-	}()
-
-	// Loop receiving messages from Redis
-	go func() {
-		for {
-			redisMessage, err := messageSubscription.ReceiveMessage()
-			if err != nil {
-				// TODO: Possibly add better handling
-				logger.Error("Error receiving message from Redis",
-					zap.Error(err),
-				)
-				break
-			}
-
-			var message protos.Message
-
-			err = proto.Unmarshal([]byte(redisMessage.Payload), &message)
-
-			if err != nil {
-				// Couldn't parse message
-				logger.Error("Invalid message received from Redis",
-					zap.Error(err),
-				)
-				continue
-			}
-
-			go handleSend(&message)
-
-			if signalQuit == nil {
-				break
-			}
-		}
-	}()
-
-	// Loop receiving channel actions from Redis
-	go func() {
-		for {
-			redisMessage, err := channelSubscription.ReceiveMessage()
-			if err != nil {
-				// TODO: Possibly add better handling
-				logger.Error("Error receiving message from Redis",
-					zap.Error(err),
-				)
-				break
-			}
-
-			var channelAction protos.ChannelAction
-
-			err = proto.Unmarshal([]byte(redisMessage.Payload), &channelAction)
-
-			if err != nil {
-				// Couldn't parse channel action
-				logger.Error("Invalid message received from Redis",
-					zap.Error(err),
-				)
-				continue
-			}
-
-			go handleChannel(&channelAction)
-
-			if signalQuit == nil {
-				break
-			}
 		}
 	}()
 
@@ -186,10 +218,17 @@ func main() {
 	case <-signalQuit:
 	}
 
-	signalQuit = nil
-
 	// Server shutdown
 	logger.Info("Shutting down")
+
+	// Cleanup
+	closeMessaging()
+	redisClient.Del("worker:" + workerId)
+
+	// Disconnect all connections
+	for _, connection := range connections.state {
+		connection.CloseChannel <- struct{}{}
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -197,15 +236,6 @@ func main() {
 		logger.Error("Error during server shutdown",
 			zap.Error(err),
 		)
-	}
-
-	// Cleanup
-	_ = messageSubscription.Close()
-	_ = channelSubscription.Close()
-
-	// Disconnect all connections
-	for _, connection := range connections.state {
-		connection.CloseChannel <- struct{}{}
 	}
 
 	// Allow time to disconnect & clear from Redis

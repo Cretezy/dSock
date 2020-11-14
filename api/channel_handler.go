@@ -17,7 +17,7 @@ var actionTypeName = map[protos.ChannelAction_ChannelActionType]string{
 
 func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		logger.Debug("Getting channel request",
+		logger.Info("Getting channel request",
 			zap.String("requestId", requestid.Get(c)),
 			zap.String("action", actionTypeName[actionType]),
 			zap.String("id", c.Query("id")),
@@ -36,6 +36,7 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 				InternalError: err,
 				ErrorCode:     common.ErrorBindingQueryParams,
 				StatusCode:    400,
+				RequestId:     requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -45,7 +46,7 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 		ignoreClaims := c.Query("ignoreClaims") == "true"
 
 		// Get all worker IDs that the target(s) is connected to
-		workerIds, apiError := resolveWorkers(resolveOptions)
+		workerIds, apiError := resolveWorkers(resolveOptions, requestid.Get(c))
 		if apiError != nil {
 			apiError.Send(c)
 			return
@@ -53,7 +54,7 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 
 		if !ignoreClaims {
 			// Add channel to all claims for the target
-			claimIds, apiError := resolveClaims(resolveOptions)
+			claimIds, apiError := resolveClaims(resolveOptions, requestid.Get(c))
 
 			if apiError != nil {
 				apiError.Send(c)
@@ -80,6 +81,7 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 							InternalError: claim.Err(),
 							ErrorCode:     common.ErrorGettingClaim,
 							StatusCode:    500,
+							RequestId:     requestid.Get(c),
 						}
 					}
 
@@ -124,20 +126,14 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 			Type: actionType,
 		}
 
-		// Build Redis channel names for $workerId:channel
-		workerChannels := make([]string, len(workerIds))
-		for index, workerId := range workerIds {
-			workerChannels[index] = workerId + ":channel"
-		}
-
 		// Send to all workers
-		apiError = sendToWorkers(workerChannels, message)
+		apiError = sendToWorkers(workerIds, message, ChannelMessageType, requestid.Get(c))
 		if apiError != nil {
 			apiError.Send(c)
 			return
 		}
 
-		logger.Debug("Set channel",
+		logger.Info("Set channel",
 			zap.String("requestId", requestid.Get(c)),
 			zap.String("action", actionTypeName[actionType]),
 			zap.String("id", resolveOptions.Connection),

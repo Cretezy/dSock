@@ -18,6 +18,7 @@ func (suite *ApiErrorSuite) TestFormat() {
 	apiError := common.ApiError{
 		StatusCode: 400,
 		ErrorCode:  common.ErrorInvalidAuthorization,
+		RequestId:  "some-request-id",
 	}
 
 	statusCode, body := apiError.Format()
@@ -31,6 +32,10 @@ func (suite *ApiErrorSuite) TestFormat() {
 	}
 
 	if !suite.Equal("Invalid authorization", body["error"], "Incorrect error message") {
+		return
+	}
+
+	if !suite.Equal("some-request-id", body["requestId"], "Incorrect request ID") {
 		return
 	}
 }
