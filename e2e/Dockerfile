@@ -10,4 +10,4 @@ ADD e2e ./e2e
 
 WORKDIR /app/e2e
 
-ENTRYPOINT ["go", "test", "-timeout", "10s"]
+ENTRYPOINT ["/bin/sh", "-c", "sleep 1 && go test -timeout 10s"]
