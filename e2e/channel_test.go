@@ -44,7 +44,7 @@ func (suite *ChannelSuite) TestChannelSubscribe() {
 	}
 
 	// Give it some time to propagate
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 100)
 
 	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
 		Target: dsock.Target{

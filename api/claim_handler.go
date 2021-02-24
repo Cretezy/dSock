@@ -148,6 +148,8 @@ func createClaimHandler(c *gin.Context) {
 			apiError.Send(c)
 			return
 		}
+
+		id = claimOptions.Id
 	} else {
 		id = common.RandomString(32)
 	}

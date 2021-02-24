@@ -7,6 +7,7 @@
 - Added more logging (including on error responses), and change multiple debug logging to info
 - Parallelized parsing of messages received from Redis (should increase throughput)
 - Deprecating `address` option: Use `port` instead
+- Fix bug where creating a claim with ID left ID blank
 
 ## v0.3.3 - 2020-07-15
 
