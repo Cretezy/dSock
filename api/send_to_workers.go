@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"net/http"
 	"sync"
+	"time"
 )
 
 const (
@@ -101,6 +102,7 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 					zap.String("requestId", requestId),
 					zap.String("workerId", workerId),
 					zap.String("messageType", messageType),
+					zap.String("url", url),
 				)
 
 				// Non-standardized Content-Type used here.
@@ -113,6 +115,7 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 						zap.String("requestId", requestId),
 						zap.String("workerId", workerId),
 						zap.String("url", url),
+						zap.String("messageType", messageType),
 						zap.Error(err),
 					)
 					addError(&common.ApiError{
@@ -126,11 +129,17 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 				req.Header.Set("Content-Type", common.ProtobufContentType)
 				req.Header.Set("X-Request-ID", requestId)
 
+				beforeRequestTime := time.Now()
 				resp, err := http.DefaultClient.Do(req)
+				requestTime := time.Now().Sub(beforeRequestTime)
+
 				if err != nil {
 					logger.Error("Could not reach worker",
 						zap.String("requestId", requestId),
 						zap.String("workerId", workerId),
+						zap.String("url", url),
+						zap.String("messageType", messageType),
+						zap.Duration("requestTime", requestTime),
 						zap.Error(err),
 					)
 					addError(&common.ApiError{
@@ -146,8 +155,10 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 						zap.String("requestId", requestId),
 						zap.String("workerId", workerId),
 						zap.String("url", url),
+						zap.String("messageType", messageType),
 						zap.Int("statusCode", resp.StatusCode),
 						zap.String("status", resp.Status),
+						zap.Duration("requestTime", requestTime),
 					)
 					addError(&common.ApiError{
 						InternalError: worker.Err(),
@@ -155,6 +166,16 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 						ErrorCode:     common.ErrorReachingWorker,
 					})
 				}
+
+				logger.Info("Finished request to worker",
+					zap.String("requestId", requestId),
+					zap.String("workerId", workerId),
+					zap.String("url", url),
+					zap.String("messageType", messageType),
+					zap.Int("statusCode", resp.StatusCode),
+					zap.String("status", resp.Status),
+					zap.Duration("requestTime", requestTime),
+				)
 			}
 		}()
 	}

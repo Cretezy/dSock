@@ -6,6 +6,7 @@ import (
 	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v7"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
@@ -13,6 +14,8 @@ import (
 	"syscall"
 	"time"
 )
+
+var apiId = uuid.New().String()
 
 var redisClient *redis.Client
 
@@ -44,6 +47,7 @@ func init() {
 func main() {
 	logger.Info("Starting dSock API",
 		zap.String("version", common.DSockVersion),
+		zap.String("apiId", apiId),
 		zap.Int("port", options.Port),
 		zap.String("DEPRECATED.address", options.Address),
 	)
@@ -86,6 +90,7 @@ func main() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("Failed listening",
 				zap.Error(err),
+				zap.String("apiId", apiId),
 			)
 			options.QuitChannel <- struct{}{}
 		}
@@ -108,16 +113,21 @@ func main() {
 	signalQuit = nil
 
 	// Server shutdown
-	logger.Info("Shutting down")
+	logger.Info("Shutting down",
+		zap.String("apiId", apiId),
+	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("Error during server shutdown",
 			zap.Error(err),
+			zap.String("apiId", apiId),
 		)
 	}
 
-	logger.Info("Stopped")
+	logger.Info("Stopped",
+		zap.String("apiId", apiId),
+	)
 	_ = logger.Sync()
 }

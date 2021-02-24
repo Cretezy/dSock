@@ -68,6 +68,7 @@ func init() {
 func main() {
 	logger.Info("Starting dSock worker",
 		zap.String("version", common.DSockVersion),
+		zap.String("workerId", workerId),
 		zap.Int("port", options.Port),
 		zap.String("DEPRECATED.address", options.Address),
 	)
@@ -115,6 +116,10 @@ func main() {
 	closeMessaging := func() {}
 
 	if options.MessagingMethod == common.MessageMethodRedis {
+		logger.Info("Starting Redis messaging method",
+			zap.String("workerId", workerId),
+		)
+
 		// Loop receiving messages from Redis
 		messageSubscription := redisClient.Subscribe(workerId)
 		go func() {
@@ -124,6 +129,7 @@ func main() {
 					// TODO: Possibly add better handling
 					logger.Error("Error receiving message from Redis",
 						zap.Error(err),
+						zap.String("workerId", workerId),
 					)
 					break
 				}
@@ -137,6 +143,7 @@ func main() {
 						// Couldn't parse message
 						logger.Error("Invalid message received from Redis",
 							zap.Error(err),
+							zap.String("workerId", workerId),
 						)
 						return
 					}
@@ -159,6 +166,7 @@ func main() {
 					// TODO: Possibly add better handling
 					logger.Error("Error receiving message from Redis",
 						zap.Error(err),
+						zap.String("workerId", workerId),
 					)
 					break
 				}
@@ -172,6 +180,7 @@ func main() {
 						// Couldn't parse channel action
 						logger.Error("Invalid message received from Redis",
 							zap.Error(err),
+							zap.String("workerId", workerId),
 						)
 						return
 					}
@@ -190,7 +199,12 @@ func main() {
 			_ = channelSubscription.Close()
 		}
 	} else {
-		// TODO
+		logger.Info("Starting direct messaging method",
+			zap.String("workerId", workerId),
+			zap.String("directHostname", options.DirectHostname),
+			zap.Int("directPort", options.DirectPort),
+		)
+
 		router.POST(common.PathReceiveMessage, sendMessageHandler)
 		router.POST(common.PathReceiveChannelMessage, channelMessageHandler)
 	}
@@ -201,6 +215,7 @@ func main() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("Failed listening",
 				zap.Error(err),
+				zap.String("workerId", workerId),
 			)
 			options.QuitChannel <- struct{}{}
 		}
@@ -208,6 +223,7 @@ func main() {
 
 	logger.Info("Listening",
 		zap.String("address", options.Address),
+		zap.String("workerId", workerId),
 	)
 
 	// Listen for signal or message in quit channel
@@ -219,7 +235,9 @@ func main() {
 	}
 
 	// Server shutdown
-	logger.Info("Shutting down")
+	logger.Info("Shutting down",
+		zap.String("workerId", workerId),
+	)
 
 	// Cleanup
 	closeMessaging()
@@ -235,12 +253,15 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("Error during server shutdown",
 			zap.Error(err),
+			zap.String("workerId", workerId),
 		)
 	}
 
 	// Allow time to disconnect & clear from Redis
 	time.Sleep(time.Second)
 
-	logger.Info("Stopped")
+	logger.Info("Stopped",
+		zap.String("workerId", workerId),
+	)
 	_ = logger.Sync()
 }

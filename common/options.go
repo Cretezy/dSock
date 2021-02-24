@@ -89,7 +89,6 @@ func GetOptions(worker bool) (*DSockOptions, error) {
 	port := viper.GetInt("port")
 
 	if os.Getenv("PORT") != "" {
-		println("Port env set", os.Getenv("PORT"))
 		port, err = strconv.Atoi(os.Getenv("PORT"))
 
 		if err != nil {
@@ -115,7 +114,7 @@ func GetOptions(worker bool) (*DSockOptions, error) {
 		redisOptions.TLSConfig = &tls.Config{}
 	}
 
-	directHostname := ""
+	directHostname := GetLocalIP()
 	directPort := port
 	messagingMethod := viper.GetString("messaging_method")
 
@@ -123,7 +122,9 @@ func GetOptions(worker bool) (*DSockOptions, error) {
 		// OK
 	} else if messagingMethod == MessageMethodDirect {
 		if worker {
-			directHostname = viper.GetString("direct_message_hostname")
+			if viper.IsSet("direct_message_hostname") {
+				directHostname = viper.GetString("direct_message_hostname")
+			}
 
 			if viper.IsSet("direct_message_port") {
 				directPort = viper.GetInt("direct_message_port")
