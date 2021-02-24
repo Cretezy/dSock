@@ -267,3 +267,38 @@ func (suite *InfoSuite) TestInfoChannelClaim() {
 		return
 	}
 }
+
+func (suite *InfoSuite) TestInfoClaimEmptyId() {
+	claim, err := dSockClient.CreateClaim(dsock.CreateClaimOptions{
+		Id:      "",
+		User:    "info",
+		Session: "claim_empty_id",
+	})
+	if !checkRequestError(suite.Suite, err, "claim creation") {
+		return
+	}
+
+	info, err := dSockClient.GetInfo(dsock.GetInfoOptions{
+		Target: dsock.Target{
+			User:    "info",
+			Session: "claim_empty_id",
+		},
+	})
+	if !checkRequestError(suite.Suite, err, "getting info") {
+		return
+	}
+
+	infoClaims := info.Claims
+	if !suite.Len(infoClaims, 1, "Incorrect number of claims") {
+		return
+	}
+
+	infoClaim := infoClaims[0]
+
+	if !suite.Equal(claim.Id, infoClaim.Id, "Incorrect claim ID") {
+		return
+	}
+	if !suite.NotEqual("", claim.Id, "Empty claim ID") {
+		return
+	}
+}
