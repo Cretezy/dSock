@@ -1,4 +1,4 @@
-## Unreleased (v0.4.0)
+## v0.4.0 - 2021-02-24
 
 - Add direct API to worker messaging
 - Add `redis_max_retries` option

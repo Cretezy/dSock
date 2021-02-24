@@ -1,3 +1,3 @@
 package common
 
-var DSockVersion = "v0.4.0-unreleased"
+var DSockVersion = "v0.4.0"
