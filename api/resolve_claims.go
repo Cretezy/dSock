@@ -10,9 +10,10 @@ func resolveClaims(options common.ResolveOptions, requestId string) ([]string, *
 
 		if userSessionClaims.Err() != nil {
 			return nil, &common.ApiError{
-				ErrorCode:  common.ErrorGettingClaim,
-				StatusCode: 500,
-				RequestId:  requestId,
+				InternalError: userSessionClaims.Err(),
+				ErrorCode:     common.ErrorGettingClaim,
+				StatusCode:    500,
+				RequestId:     requestId,
 			}
 		}
 
@@ -22,9 +23,10 @@ func resolveClaims(options common.ResolveOptions, requestId string) ([]string, *
 
 		if channelClaims.Err() != nil {
 			return nil, &common.ApiError{
-				ErrorCode:  common.ErrorGettingClaim,
-				StatusCode: 500,
-				RequestId:  requestId,
+				InternalError: channelClaims.Err(),
+				ErrorCode:     common.ErrorGettingClaim,
+				StatusCode:    500,
+				RequestId:     requestId,
 			}
 		}
 
@@ -34,9 +36,10 @@ func resolveClaims(options common.ResolveOptions, requestId string) ([]string, *
 
 		if userClaims.Err() != nil {
 			return nil, &common.ApiError{
-				ErrorCode:  common.ErrorGettingClaim,
-				StatusCode: 500,
-				RequestId:  requestId,
+				InternalError: userClaims.Err(),
+				ErrorCode:     common.ErrorGettingClaim,
+				StatusCode:    500,
+				RequestId:     requestId,
 			}
 		}
 

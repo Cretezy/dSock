@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"github.com/Cretezy/dSock/common"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -20,9 +21,10 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 
 	if err != nil {
 		return &common.ApiError{
-			ErrorCode:  common.ErrorMarshallingMessage,
-			StatusCode: 500,
-			RequestId:  requestId,
+			InternalError: err,
+			ErrorCode:     common.ErrorMarshallingMessage,
+			StatusCode:    500,
+			RequestId:     requestId,
 		}
 	}
 
@@ -183,9 +185,18 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 	workersWaitGroup.Wait()
 
 	if len(errs) > 0 {
+		errorMessage := ""
+		for index, err := range errs {
+			errorMessage = errorMessage + err.Error()
+			if index+1 != len(errs) {
+				errorMessage = errorMessage + ", "
+			}
+		}
+
 		return &common.ApiError{
-			ErrorCode:  common.ErrorDeliveringMessage,
-			StatusCode: 500,
+			InternalError: errors.New(errorMessage),
+			ErrorCode:     common.ErrorDeliveringMessage,
+			StatusCode:    500,
 		}
 	}
 

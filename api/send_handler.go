@@ -56,9 +56,10 @@ func sendHandler(c *gin.Context) {
 
 	if err != nil {
 		apiError := common.ApiError{
-			StatusCode: 500,
-			ErrorCode:  common.ErrorReadingMessage,
-			RequestId:  requestid.Get(c),
+			InternalError: err,
+			StatusCode:    500,
+			ErrorCode:     common.ErrorReadingMessage,
+			RequestId:     requestid.Get(c),
 		}
 		apiError.Send(c)
 		return

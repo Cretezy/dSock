@@ -66,9 +66,10 @@ func createClaimHandler(c *gin.Context) {
 
 		if err != nil {
 			apiError := common.ApiError{
-				ErrorCode:  common.ErrorInvalidExpiration,
-				StatusCode: 400,
-				RequestId:  requestid.Get(c),
+				InternalError: err,
+				ErrorCode:     common.ErrorInvalidExpiration,
+				StatusCode:    400,
+				RequestId:     requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -100,9 +101,10 @@ func createClaimHandler(c *gin.Context) {
 
 		if err != nil {
 			apiError := common.ApiError{
-				ErrorCode:  common.ErrorInvalidDuration,
-				StatusCode: 400,
-				RequestId:  requestid.Get(c),
+				InternalError: err,
+				ErrorCode:     common.ErrorInvalidDuration,
+				StatusCode:    400,
+				RequestId:     requestid.Get(c),
 			}
 			apiError.Send(c)
 			return
@@ -131,9 +133,10 @@ func createClaimHandler(c *gin.Context) {
 
 		if exists.Err() != nil {
 			apiError := common.ApiError{
-				ErrorCode:  common.ErrorCheckingClaim,
-				StatusCode: 500,
-				RequestId:  requestid.Get(c),
+				InternalError: exists.Err(),
+				ErrorCode:     common.ErrorCheckingClaim,
+				StatusCode:    500,
+				RequestId:     requestid.Get(c),
 			}
 			apiError.Send(c)
 			return

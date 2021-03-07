@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add internal errors to all missing applicable errors
+
 ## v0.4.1 - 2021-03-07
 
 - Add sending lock/mutex (prevents `concurrent write to websocket connection` error)
