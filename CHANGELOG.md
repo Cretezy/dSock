@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Add internal errors to all missing applicable errors
+- Optimize info call from O(n) (where n number of connections/claims) to O(1) (in terms of Redis requests)
 
 ## v0.4.1 - 2021-03-07
 
