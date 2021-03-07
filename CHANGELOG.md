@@ -1,3 +1,7 @@
+## v0.4.1 - 2021-03-07
+
+- Add sending lock/mutex (prevents `concurrent write to websocket connection` error)
+
 ## v0.4.0 - 2021-02-24
 
 - Add direct API to worker messaging

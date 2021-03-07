@@ -96,6 +96,8 @@ func connectHandler(c *gin.Context) {
 		redisClient.SAdd("user-session:"+connection.User+"-"+connection.Session, connId)
 	}
 
+	sendMutex := sync.Mutex{}
+
 	// Send ping every minute
 	go func() {
 		for {
@@ -105,7 +107,9 @@ func connectHandler(c *gin.Context) {
 				break
 			}
 
+			sendMutex.Lock()
 			_ = conn.WriteMessage(websocket.PingMessage, []byte{})
+			sendMutex.Unlock()
 		}
 	}()
 
@@ -145,7 +149,9 @@ SendLoop:
 	for {
 		select {
 		case message := <-sender:
+			sendMutex.Lock()
 			_ = conn.WriteMessage(int(message.Type), message.Body)
+			sendMutex.Unlock()
 			break
 		case <-connection.CloseChannel:
 			logger.Info("Disconnecting user",
@@ -154,6 +160,9 @@ SendLoop:
 			)
 
 			connection.CloseChannel = nil
+
+			sendMutex.Lock()
+
 			// Send close message with 1000
 			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			// Sleep a tiny bit to allow message to be sent before closing connection
