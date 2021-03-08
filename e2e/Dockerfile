@@ -1,5 +1,7 @@
 FROM golang:1.13
 
+RUN apt-get update && apt install wait-for-it
+
 WORKDIR /app
 
 ADD go.mod go.sum ./
@@ -10,4 +12,4 @@ ADD e2e ./e2e
 
 WORKDIR /app/e2e
 
-ENTRYPOINT ["/bin/sh", "-c", "sleep 1 && go test -timeout 10s"]
+ENTRYPOINT ["wait-for-it", "api:80", "-t", "30", "--", "go", "test", "-timeout", "30s"]

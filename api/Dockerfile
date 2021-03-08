@@ -1,7 +1,7 @@
 # Development stage with gin and all required files
 FROM golang:1.13 AS development
 
-RUN go get github.com/codegangsta/gin
+RUN go get -u github.com/cosmtrek/air
 
 WORKDIR /app
 
@@ -12,9 +12,10 @@ ADD common ./common
 ADD api ./api
 
 WORKDIR /app/api
+ENV PORT 80
 EXPOSE 80
 
-ENTRYPOINT ["gin", "--port=80", "run", "main.go"]
+ENTRYPOINT ["air"]
 
 
 # Release builder stage, to build the output binary
