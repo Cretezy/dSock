@@ -5,9 +5,9 @@ import (
 	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v7"
 	"go.uber.org/zap"
 	"strings"
-	"sync"
 )
 
 var actionTypeName = map[protos.ChannelAction_ChannelActionType]string{
@@ -17,8 +17,10 @@ var actionTypeName = map[protos.ChannelAction_ChannelActionType]string{
 
 func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		requestId := requestid.Get(c)
+
 		logger.Info("Getting channel request",
-			zap.String("requestId", requestid.Get(c)),
+			zap.String("requestId", requestId),
 			zap.String("action", actionTypeName[actionType]),
 			zap.String("id", c.Query("id")),
 			zap.String("user", c.Query("user")),
@@ -36,7 +38,7 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 				InternalError: err,
 				ErrorCode:     common.ErrorBindingQueryParams,
 				StatusCode:    400,
-				RequestId:     requestid.Get(c),
+				RequestId:     requestId,
 			}
 			apiError.Send(c)
 			return
@@ -46,7 +48,7 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 		ignoreClaims := c.Query("ignoreClaims") == "true"
 
 		// Get all worker IDs that the target(s) is connected to
-		workerIds, apiError := resolveWorkers(resolveOptions, requestid.Get(c))
+		workerIds, apiError := resolveWorkers(resolveOptions, requestId)
 		if apiError != nil {
 			apiError.Send(c)
 			return
@@ -54,61 +56,72 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 
 		if !ignoreClaims {
 			// Add channel to all claims for the target
-			claimIds, apiError := resolveClaims(resolveOptions, requestid.Get(c))
+			claimIds, apiError := resolveClaims(resolveOptions, requestId)
 
 			if apiError != nil {
 				apiError.Send(c)
 				return
 			}
 
-			// Update all resolved claims
-			var claimWaitGroup sync.WaitGroup
-			claimWaitGroup.Add(len(claimIds))
-
-			for _, claimId := range claimIds {
-				claimId := claimId
-				go func() {
-					defer claimWaitGroup.Done()
-					claimKey := "claim:" + claimId
+			var claimCmds = make([]*redis.StringStringMapCmd, len(claimIds))
+			_, err := redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
+				for index, claimId := range claimIds {
 					// HGetAll instead of HGet to be able to check if claim exist
-					claim := redisClient.HGetAll(claimKey)
-					if apiError != nil {
-						return
-					}
+					claimCmds[index] = pipeliner.HGetAll("claim:" + claimId)
+				}
 
-					if claim.Err() != nil {
-						apiError = &common.ApiError{
-							InternalError: claim.Err(),
-							ErrorCode:     common.ErrorGettingClaim,
-							StatusCode:    500,
-							RequestId:     requestid.Get(c),
-						}
-					}
+				return nil
+			})
+
+			if err != nil {
+				apiError = &common.ApiError{
+					InternalError: err,
+					ErrorCode:     common.ErrorGettingClaim,
+					StatusCode:    500,
+					RequestId:     requestId,
+				}
+				apiError.Send(c)
+
+				return
+			}
+
+			_, err = redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
+				// Update all resolved claims
+				for index, claimId := range claimIds {
+					claimKey := "claim:" + claimId
+					claim := claimCmds[index]
 
 					if len(claim.Val()) == 0 {
 						// Claim doesn't exist
-						return
+						continue
 					}
 
 					channels := common.RemoveEmpty(strings.Split(claim.Val()["channels"], ","))
 
 					if actionType == protos.ChannelAction_SUBSCRIBE && !common.IncludesString(channels, channelChange) {
 						channels = append(channels, channelChange)
-						redisClient.SAdd("claim-channel:"+channelChange, claimId)
+						pipeliner.SAdd("claim-channel:"+channelChange, claimId)
 					} else if actionType != protos.ChannelAction_SUBSCRIBE && common.IncludesString(channels, channelChange) {
 						channels = common.RemoveString(channels, channelChange)
-						redisClient.SRem("claim-channel:"+channelChange, claimId)
+						pipeliner.SRem("claim-channel:"+channelChange, claimId)
 					} else {
-						return
+						continue
 					}
 
-					redisClient.HSet(claimKey, "channels", strings.Join(channels, ","))
-				}()
-			}
+					pipeliner.HSet(claimKey, "channels", strings.Join(channels, ","))
+				}
 
-			claimWaitGroup.Wait()
+				return nil
+			})
 
-			if apiError != nil {
+			if err != nil {
+				apiError = &common.ApiError{
+					InternalError: err,
+					// TODO: Improve error
+					ErrorCode:  common.ErrorGettingChannel,
+					StatusCode: 500,
+					RequestId:  requestId,
+				}
 				apiError.Send(c)
 				return
 			}
@@ -127,14 +140,14 @@ func getChannelHandler(actionType protos.ChannelAction_ChannelActionType) gin.Ha
 		}
 
 		// Send to all workers
-		apiError = sendToWorkers(workerIds, message, ChannelMessageType, requestid.Get(c))
+		apiError = sendToWorkers(workerIds, message, ChannelMessageType, requestId)
 		if apiError != nil {
 			apiError.Send(c)
 			return
 		}
 
 		logger.Info("Set channel",
-			zap.String("requestId", requestid.Get(c)),
+			zap.String("requestId", requestId),
 			zap.String("action", actionTypeName[actionType]),
 			zap.String("id", resolveOptions.Connection),
 			zap.String("user", resolveOptions.User),

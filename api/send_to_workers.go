@@ -70,7 +70,6 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 		}
 
 	} else {
-
 		var workerCmds = make([]*redis.StringStringMapCmd, len(workerIds))
 		_, err := redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
 			for index, workerId := range workerIds {
