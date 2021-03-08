@@ -2,15 +2,12 @@ package main
 
 import (
 	"github.com/Cretezy/dSock/common"
-	"sync"
+	"github.com/go-redis/redis/v7"
 )
 
 /// Resolves the workers holding the connection
 func resolveWorkers(options common.ResolveOptions, requestId string) ([]string, *common.ApiError) {
 	workerIds := make([]string, 0)
-
-	var workersLock sync.Mutex
-	var apiError *common.ApiError
 
 	if options.Connection != "" {
 		// Get a connection by connection ID
@@ -55,51 +52,52 @@ func resolveWorkers(options common.ResolveOptions, requestId string) ([]string, 
 			return []string{}, nil
 		}
 
-		var channelWaitGroup sync.WaitGroup
-		channelWaitGroup.Add(len(channel.Val()))
+		var connectionCmds = make([]*redis.StringStringMapCmd, len(channel.Val()))
+		_, err := redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
+			for index, connId := range channel.Val() {
+				connectionCmds[index] = pipeliner.HGetAll("conn:" + connId)
+			}
 
-		// Resolves connection for each user connection
-		for _, connId := range channel.Val() {
-			connId := connId
-			go func() {
-				defer channelWaitGroup.Done()
+			return nil
+		})
 
-				connection := redisClient.HGetAll("conn:" + connId)
-
-				// Stop if one of the Redis commands failed
-				if apiError != nil {
-					return
-				}
-
-				if connection.Err() != nil {
-					apiError = &common.ApiError{
-						InternalError: connection.Err(),
-						StatusCode:    500,
-						ErrorCode:     common.ErrorGettingConnection,
-						RequestId:     requestId,
-					}
-					return
-				}
-
-				if len(connection.Val()) == 0 {
-					// Connection doesn't exist
-					return
-				}
-
-				workerId, hasWorkerId := connection.Val()["workerId"]
-
-				if !hasWorkerId {
-					// Is missing worker ID, ignoring
-					return
-				}
-
-				workersLock.Lock()
-				workerIds = append(workerIds, workerId)
-				workersLock.Unlock()
-			}()
+		if err != nil {
+			return nil, &common.ApiError{
+				InternalError: err,
+				StatusCode:    500,
+				ErrorCode:     common.ErrorGettingConnection,
+				RequestId:     requestId,
+			}
 		}
 
-		channelWaitGroup.Wait()
+		// Resolves connection for each user connection
+		for index := range channel.Val() {
+			connection := connectionCmds[index]
+
+			if connection.Err() != nil {
+				return nil, &common.ApiError{
+					InternalError: connection.Err(),
+					StatusCode:    500,
+					ErrorCode:     common.ErrorGettingConnection,
+					RequestId:     requestId,
+				}
+			}
+
+			if len(connection.Val()) == 0 {
+				// Connection doesn't exist
+				continue
+			}
+
+			workerId, hasWorkerId := connection.Val()["workerId"]
+
+			if !hasWorkerId {
+				// Is missing worker ID, ignoring
+				continue
+			}
+
+			workerIds = append(workerIds, workerId)
+		}
+
 	} else if options.User != "" {
 		// Get all connections for a user (optionally filtered by session)
 		user := redisClient.SMembers("user:" + options.User)
@@ -118,56 +116,57 @@ func resolveWorkers(options common.ResolveOptions, requestId string) ([]string, 
 			return []string{}, nil
 		}
 
-		var usersWaitGroup sync.WaitGroup
-		usersWaitGroup.Add(len(user.Val()))
+		var connectionCmds = make([]*redis.StringStringMapCmd, len(user.Val()))
+		_, err := redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
+			for index, connId := range user.Val() {
+				connectionCmds[index] = pipeliner.HGetAll("conn:" + connId)
+			}
 
-		// Resolves connection for each user connection
-		for _, connId := range user.Val() {
-			connId := connId
-			go func() {
-				defer usersWaitGroup.Done()
+			return nil
+		})
 
-				connection := redisClient.HGetAll("conn:" + connId)
-
-				// Stop if one of the Redis commands failed
-				if apiError != nil {
-					return
-				}
-
-				if connection.Err() != nil {
-					apiError = &common.ApiError{
-						InternalError: connection.Err(),
-						StatusCode:    500,
-						ErrorCode:     common.ErrorGettingConnection,
-						RequestId:     requestId,
-					}
-					return
-				}
-
-				if len(connection.Val()) == 0 {
-					// Connection doesn't exist
-					return
-				}
-
-				workerId, hasWorkerId := connection.Val()["workerId"]
-
-				if !hasWorkerId {
-					// Is missing worker ID, ignoring
-					return
-				}
-
-				// Target specific session(s) for user if set
-				if options.Session != "" && connection.Val()["session"] != options.Session {
-					return
-				}
-
-				workersLock.Lock()
-				workerIds = append(workerIds, workerId)
-				workersLock.Unlock()
-			}()
+		if err != nil {
+			return nil, &common.ApiError{
+				InternalError: err,
+				StatusCode:    500,
+				ErrorCode:     common.ErrorGettingConnection,
+				RequestId:     requestId,
+			}
 		}
 
-		usersWaitGroup.Wait()
+		// Resolves connection for each user connection
+		for index := range user.Val() {
+			connection := connectionCmds[index]
+
+			if connection.Err() != nil {
+				return nil, &common.ApiError{
+					InternalError: connection.Err(),
+					StatusCode:    500,
+					ErrorCode:     common.ErrorGettingConnection,
+					RequestId:     requestId,
+				}
+			}
+
+			if len(connection.Val()) == 0 {
+				// Connection doesn't exist
+				continue
+			}
+
+			workerId, hasWorkerId := connection.Val()["workerId"]
+
+			if !hasWorkerId {
+				// Is missing worker ID, ignoring
+				continue
+			}
+
+			// Target specific session(s) for user if set
+			if options.Session != "" && connection.Val()["session"] != options.Session {
+				continue
+			}
+
+			workerIds = append(workerIds, workerId)
+		}
+
 	} else {
 		// No targeting options where provided
 		return nil, &common.ApiError{
@@ -175,10 +174,6 @@ func resolveWorkers(options common.ResolveOptions, requestId string) ([]string, 
 			ErrorCode:  common.ErrorTarget,
 			RequestId:  requestId,
 		}
-	}
-
-	if apiError != nil {
-		return nil, apiError
 	}
 
 	return common.RemoveEmpty(common.UniqueString(workerIds)), nil

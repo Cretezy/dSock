@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/Cretezy/dSock/common"
+	"github.com/go-redis/redis/v7"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	"net/http"
@@ -28,9 +29,6 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 		}
 	}
 
-	var workersWaitGroup sync.WaitGroup
-	workersWaitGroup.Add(len(workerIds))
-
 	errs := make([]error, 0)
 	errsLock := sync.Mutex{}
 
@@ -41,12 +39,9 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 		errs = append(errs, err)
 	}
 
-	for _, workerId := range workerIds {
-		workerId := workerId
-		go func() {
-			defer workersWaitGroup.Done()
-
-			if options.MessagingMethod == common.MessageMethodRedis {
+	if options.MessagingMethod == common.MessageMethodRedis {
+		_, err := redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
+			for _, workerId := range workerIds {
 				redisChannel := workerId
 				if messageType == ChannelMessageType {
 					redisChannel = redisChannel + ":channel"
@@ -59,21 +54,52 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 					zap.String("redisChannel", redisChannel),
 				)
 
-				redisClient.Publish(redisChannel, rawMessage)
-			} else {
-				worker := redisClient.HGetAll("worker:" + workerId)
-				if worker.Err() != nil {
-					logger.Error("Could not find worker in Redis",
-						zap.String("requestId", requestId),
-						zap.String("workerId", workerId),
-					)
-					addError(&common.ApiError{
-						InternalError: worker.Err(),
-						StatusCode:    500,
-						ErrorCode:     common.ErrorGettingWorker,
-					})
-					return
-				}
+				pipeliner.Publish(redisChannel, rawMessage)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return &common.ApiError{
+				InternalError: err,
+				ErrorCode:     common.ErrorDeliveringMessage,
+				StatusCode:    500,
+				RequestId:     requestId,
+			}
+		}
+
+	} else {
+
+		var workerCmds = make([]*redis.StringStringMapCmd, len(workerIds))
+		_, err := redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
+			for index, workerId := range workerIds {
+				workerCmds[index] = pipeliner.HGetAll("worker:" + workerId)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return &common.ApiError{
+				InternalError: err,
+				ErrorCode:     common.ErrorDeliveringMessage,
+				StatusCode:    500,
+				RequestId:     requestId,
+			}
+		}
+
+		var workersWaitGroup sync.WaitGroup
+		workersWaitGroup.Add(len(workerIds))
+
+		for index, workerId := range workerIds {
+			index := index
+			workerId := workerId
+
+			go func() {
+				defer workersWaitGroup.Done()
+
+				worker := workerCmds[index]
 
 				if len(worker.Val()) == 0 {
 					logger.Error("Found empty worker in Redis",
@@ -178,25 +204,26 @@ func sendToWorkers(workerIds []string, message proto.Message, messageType string
 					zap.String("status", resp.Status),
 					zap.Duration("requestTime", requestTime),
 				)
-			}
-		}()
-	}
-
-	workersWaitGroup.Wait()
-
-	if len(errs) > 0 {
-		errorMessage := ""
-		for index, err := range errs {
-			errorMessage = errorMessage + err.Error()
-			if index+1 != len(errs) {
-				errorMessage = errorMessage + ", "
-			}
+			}()
 		}
 
-		return &common.ApiError{
-			InternalError: errors.New(errorMessage),
-			ErrorCode:     common.ErrorDeliveringMessage,
-			StatusCode:    500,
+		workersWaitGroup.Wait()
+
+		if len(errs) > 0 {
+			errorMessage := ""
+			for index, err := range errs {
+				errorMessage = errorMessage + err.Error()
+				if index+1 != len(errs) {
+					errorMessage = errorMessage + ", "
+				}
+			}
+
+			return &common.ApiError{
+				InternalError: errors.New(errorMessage),
+				ErrorCode:     common.ErrorDeliveringMessage,
+				StatusCode:    500,
+				RequestId:     requestId,
+			}
 		}
 	}
 
