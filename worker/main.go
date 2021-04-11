@@ -103,16 +103,7 @@ func main() {
 
 	signalQuit := make(chan os.Signal, 1)
 
-	// Register worker in Redis
-	redisWorker := map[string]interface{}{
-		"lastPing": time.Now().Format(time.RFC3339),
-	}
-	if options.MessagingMethod == common.MessageMethodDirect {
-		redisWorker["ip"] = options.DirectHostname + ":" + strconv.Itoa(options.DirectPort)
-	}
-
-	redisClient.HSet("worker:"+workerId, redisWorker)
-	redisClient.Expire("worker:"+workerId, options.TtlDuration*2)
+	RefreshWorker(redisClient)
 
 	closeMessaging := func() {}
 
@@ -265,4 +256,17 @@ func main() {
 		zap.String("workerId", workerId),
 	)
 	_ = logger.Sync()
+}
+
+func RefreshWorker(redisCmdable redis.Cmdable) {
+	redisWorker := map[string]interface{}{
+		"lastPing": time.Now().Format(time.RFC3339),
+	}
+	if options.MessagingMethod == common.MessageMethodDirect {
+		redisWorker["ip"] = options.DirectHostname + ":" + strconv.Itoa(options.DirectPort)
+	}
+
+	redisClient.HSet("worker:"+workerId, redisWorker)
+	redisClient.Expire("worker:"+workerId, options.TtlDuration*2)
+
 }

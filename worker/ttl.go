@@ -14,15 +14,10 @@ func RefreshTtls() {
 		time.Sleep(time.Until(nextTime))
 
 		_, err := redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
-			redisWorker := map[string]interface{}{
-				"lastPing": time.Now().Format(time.RFC3339),
-			}
+			RefreshWorker(pipeliner)
 
-			pipeliner.HSet("worker:"+workerId, redisWorker)
-			pipeliner.Expire("worker:"+workerId, options.TtlDuration*2)
-
-			for connId := range connections.state {
-				pipeliner.Expire("conn:"+connId, options.TtlDuration*2)
+			for _, connection := range connections.state {
+				connection.Refresh(pipeliner)
 			}
 
 			return nil

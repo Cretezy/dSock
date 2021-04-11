@@ -4,6 +4,7 @@ import (
 	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v7"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
@@ -65,44 +66,23 @@ func connectHandler(c *gin.Context) {
 		Sender:       sender,
 		CloseChannel: make(chan struct{}),
 		channels:     authentication.Channels,
+		lastPing:     time.Now(),
 	}
 
 	connections.Add(&connection)
 	users.Add(connection.User, connId)
-
-	for _, channel := range authentication.Channels {
+	for _, channel := range connection.channels {
 		channels.Add(channel, connId)
-
-		redisClient.SAdd("channel:"+channel, connId)
 	}
 
-	// Add user/session to Redis
-	redisConnection := map[string]interface{}{
-		"user":     connection.User,
-		"workerId": workerId,
-		"lastPing": time.Now().Format(time.RFC3339),
-		"channels": strings.Join(authentication.Channels, ","),
-	}
-	if connection.Session != "" {
-		redisConnection["session"] = connection.Session
-	}
-	if len(authentication.Channels) != 0 {
-		redisConnection["channels"] = strings.Join(authentication.Channels, ",")
-	}
-	redisClient.HSet("conn:"+connId, redisConnection)
-	redisClient.Expire("conn:"+connId, options.TtlDuration*2)
-
-	redisClient.SAdd("user:"+connection.User, connId)
-	if connection.Session != "" {
-		redisClient.SAdd("user-session:"+connection.User+"-"+connection.Session, connId)
-	}
+	connection.Refresh(redisClient)
 
 	sendMutex := sync.Mutex{}
 
 	// Send ping every minute
 	go func() {
 		for {
-			time.Sleep(time.Minute)
+			time.Sleep(time.Second * 30)
 
 			if connection.CloseChannel == nil {
 				break
@@ -138,7 +118,11 @@ func connectHandler(c *gin.Context) {
 			case websocket.PingMessage:
 				fallthrough
 			case websocket.PongMessage:
-				redisClient.HSet(connId, "lastPing", time.Now().Format(time.RFC3339))
+				connection.lock.Lock()
+				connection.lastPing = time.Now()
+				connection.lock.Unlock()
+
+				connection.Refresh(redisClient)
 				break
 			}
 
@@ -202,6 +186,7 @@ type SockConnection struct {
 	/// Channel to close the connect. nil when connection is closed/closing
 	CloseChannel chan struct{}
 	channels     []string
+	lastPing     time.Time
 	lock         sync.RWMutex
 }
 
@@ -217,4 +202,31 @@ func (connection *SockConnection) GetChannels() []string {
 	defer connection.lock.RUnlock()
 
 	return connection.channels
+}
+
+func (connection *SockConnection) Refresh(redisCmdable redis.Cmdable) {
+	connection.lock.RLock()
+	defer connection.lock.RUnlock()
+
+	redisConnection := map[string]interface{}{
+		"user":     connection.User,
+		"workerId": workerId,
+		"lastPing": connection.lastPing.Format(time.RFC3339),
+		"channels": strings.Join(connection.channels, ","),
+	}
+	if connection.Session != "" {
+		redisConnection["session"] = connection.Session
+	}
+
+	redisCmdable.HSet("conn:"+connection.Id, redisConnection)
+	redisCmdable.Expire("conn:"+connection.Id, options.TtlDuration*2)
+
+	// Add user/session to Redis
+	for _, channel := range connection.channels {
+		redisCmdable.SAdd("channel:"+channel, connection.Id)
+	}
+	redisCmdable.SAdd("user:"+connection.User, connection.Id)
+	if connection.Session != "" {
+		redisCmdable.SAdd("user-session:"+connection.User+"-"+connection.Session, connection.Id)
+	}
 }

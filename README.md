@@ -135,7 +135,7 @@ dSock can be configured using a config file or using environment variables.
 
 - `DSOCK_DIRECT_MESSAGE_HOSTNAME` (`direct_message_hostname`, string, worker only): If `method_method` is set to `direct`, this is the hostname of the worker accessible from the API. Defaults to first local non-loopback IPv4
 - `DSOCK_DIRECT_MESSAGE_PORT` (`direct_message_port`, string, worker only): If `method_method` is set to `direct`, this is the port that the worker is listening on. Defaults to port
-- `DSOCK_TTL_DURATION` (`ttl_duration`, string duration, worker only): How often to refresh worker/connection keys in Redis. Uses [Go duration parsing](https://golang.org/pkg/time/#ParseDuration). Defaults to `60s`
+- `DSOCK_TTL_DURATION` (`ttl_duration`, string duration, worker only): How often to refresh worker/connection keys in Redis. Uses [Go duration parsing](https://golang.org/pkg/time/#ParseDuration). Defaults to `60s` (should not be lower than `10s`)
 
 You can write your config file in TOML (recommended), JSON, YAML, or any format supported by [viper](https://github.com/spf13/viper)
 
