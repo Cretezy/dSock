@@ -112,7 +112,7 @@ func main() {
 	}
 
 	redisClient.HSet("worker:"+workerId, redisWorker)
-	redisClient.Expire("worker:"+workerId, options.TtlDuration+common.TtlBuffer)
+	redisClient.Expire("worker:"+workerId, options.TtlDuration*2)
 
 	closeMessaging := func() {}
 

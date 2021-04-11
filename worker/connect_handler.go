@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/Cretezy/dSock/common"
 	"github.com/Cretezy/dSock/common/protos"
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
@@ -91,7 +90,7 @@ func connectHandler(c *gin.Context) {
 		redisConnection["channels"] = strings.Join(authentication.Channels, ",")
 	}
 	redisClient.HSet("conn:"+connId, redisConnection)
-	redisClient.Expire("conn:"+connId, options.TtlDuration+common.TtlBuffer)
+	redisClient.Expire("conn:"+connId, options.TtlDuration*2)
 
 	redisClient.SAdd("user:"+connection.User, connId)
 	if connection.Session != "" {

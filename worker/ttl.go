@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/Cretezy/dSock/common"
 	"github.com/go-redis/redis/v7"
 	"go.uber.org/zap"
 	"time"
@@ -20,10 +19,10 @@ func RefreshTtls() {
 			}
 
 			pipeliner.HSet("worker:"+workerId, redisWorker)
-			pipeliner.Expire("worker:"+workerId, options.TtlDuration+common.TtlBuffer)
+			pipeliner.Expire("worker:"+workerId, options.TtlDuration*2)
 
 			for connId := range connections.state {
-				pipeliner.Expire("conn:"+connId, options.TtlDuration+common.TtlBuffer)
+				pipeliner.Expire("conn:"+connId, options.TtlDuration*2)
 			}
 
 			return nil
