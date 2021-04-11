@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const MessageMethodRedis = "redis"
@@ -37,6 +38,8 @@ type DSockOptions struct {
 	DirectHostname string
 	/// The worker port
 	DirectPort int
+	/// Interval for refreshing expiring data
+	TtlDuration time.Duration
 }
 
 func SetupConfig() error {
@@ -62,6 +65,7 @@ func SetupConfig() error {
 	viper.SetDefault("messaging_method", "redis")
 	viper.SetDefault("direct_message_hostname", "")
 	viper.SetDefault("direct_message_port", "")
+	viper.SetDefault("ttl_duration", "60s")
 
 	err := viper.ReadInConfig()
 
@@ -114,6 +118,11 @@ func GetOptions(worker bool) (*DSockOptions, error) {
 		redisOptions.TLSConfig = &tls.Config{}
 	}
 
+	ttlDuration, err := time.ParseDuration(viper.GetString("ttl_duration"))
+	if err != nil {
+		return nil, err
+	}
+
 	directHostname := GetLocalIP()
 	directPort := port
 	messagingMethod := viper.GetString("messaging_method")
@@ -151,6 +160,7 @@ func GetOptions(worker bool) (*DSockOptions, error) {
 		DirectHostname:  directHostname,
 		DirectPort:      directPort,
 		Port:            port,
+		TtlDuration:     ttlDuration,
 	}, nil
 }
 

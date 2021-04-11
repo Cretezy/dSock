@@ -112,8 +112,11 @@ func main() {
 	}
 
 	redisClient.HSet("worker:"+workerId, redisWorker)
+	redisClient.Expire("worker:"+workerId, options.TtlDuration+common.TtlBuffer)
 
 	closeMessaging := func() {}
+
+	go RefreshTtls()
 
 	if options.MessagingMethod == common.MessageMethodRedis {
 		logger.Info("Starting Redis messaging method",
@@ -208,8 +211,6 @@ func main() {
 		router.POST(common.PathReceiveMessage, sendMessageHandler)
 		router.POST(common.PathReceiveChannelMessage, channelMessageHandler)
 	}
-
-	// TODO: Add lastPing refresh every minute
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

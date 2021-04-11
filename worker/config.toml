@@ -11,3 +11,4 @@ messaging_method = "direct"
 # Worker only
 direct_message_hostname = "worker"
 direct_message_port = "80"
+ttl_duration = "60s"

@@ -1,5 +1,7 @@
 package common
 
+import "time"
+
 const (
 	PathPing                  = "/ping"
 	PathSend                  = "/send"
@@ -14,3 +16,5 @@ const (
 )
 
 const ProtobufContentType = "application/protobuf"
+
+const TtlBuffer = 5 * time.Second
