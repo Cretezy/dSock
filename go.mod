@@ -20,7 +20,7 @@ require (
 	github.com/spf13/viper v1.6.3
 	github.com/stretchr/testify v1.4.0
 	go.uber.org/zap v1.10.0
-	golang.org/x/sys v0.0.0-20210308170721-88b6017d0656 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	google.golang.org/protobuf v1.21.0
 )
 
